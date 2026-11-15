@@ -86,20 +86,47 @@
         .video-call-btn { background: #3182ce; color: white; border: none; padding: 8px 12px; border-radius: 8px; cursor: pointer; font-size: 13px; font-weight: bold; display: flex; align-items: center; gap: 5px; }
         .logout-btn { background: #ff4d4d; color: white; border: none; padding: 8px 14px; border-radius: 8px; cursor: pointer; font-weight: bold; font-size: 13px; }
 
-        .messages-box { flex: 1; padding: 20px; overflow-y: auto; display: flex; flex-direction: column; gap: 12px; }
+        .messages-box { flex: 1; padding: 20px; overflow-y: auto; display: flex; flex-direction: column; gap: 14px; }
         .empty-state { margin: auto; text-align: center; color: var(--text-muted); }
 
-        .msg { max-width: 72%; padding: 10px 14px; border-radius: 16px; font-size: var(--font-size); line-height: 1.4; word-wrap: break-word; box-shadow: 0 2px 5px rgba(0,0,0,0.06); }
-        .msg.sent { align-self: flex-end; background: var(--sent-bubble); color: white; border-bottom-right-radius: 4px; }
-        .msg.received { align-self: flex-start; background: var(--received-bubble); color: var(--text-main); border-bottom-left-radius: 4px; border: 1px solid var(--border-color); }
+        .msg { position: relative; max-width: 76%; padding: 10px 14px; border-radius: 16px; font-size: var(--font-size); line-height: 1.4; word-wrap: break-word; box-shadow: 0 2px 5px rgba(0,0,0,0.06); }
+        .msg.sent { align-self: flex-end; background: var(--sent-bubble); color: white; border-bottom-right-radius: 4px; padding-right: 30px; }
+        .msg.received { align-self: flex-start; background: var(--received-bubble); color: var(--text-main); border-bottom-left-radius: 4px; border: 1px solid var(--border-color); padding-right: 30px; }
         .sender-tag { display: block; font-size: 11px; font-weight: bold; margin-bottom: 4px; color: var(--primary-color); }
         
-        .msg img { max-width: 260px; max-height: 260px; border-radius: 10px; display: block; margin-top: 5px; object-fit: cover; }
+        .msg img { max-width: 260px; max-height: 260px; border-radius: 10px; display: block; margin-top: 5px; object-fit: cover; border: 1px solid rgba(0,0,0,0.1); }
         .msg video { max-width: 280px; border-radius: 10px; display: block; margin-top: 5px; }
         .msg audio { max-width: 240px; height: 36px; margin-top: 5px; }
-        .file-box { background: rgba(0,0,0,0.06); padding: 10px; border-radius: 8px; display: flex; align-items: center; gap: 10px; margin-top: 5px; }
-        .file-box a { color: inherit; font-weight: bold; text-decoration: underline; font-size: 13px; }
+        
+        .file-box { background: rgba(0,0,0,0.12); padding: 10px 12px; border-radius: 10px; display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-top: 6px; }
+        .msg.received .file-box { background: rgba(102, 126, 234, 0.12); }
+
+        /* Message Action Bar (Like, Comment, Copy, Download, Forward) */
+        .msg-actions { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 8px; padding-top: 6px; border-top: 1px solid rgba(128,128,128,0.2); }
+        .msg-action-btn { background: rgba(0,0,0,0.18); color: inherit; border: none; padding: 4px 8px; border-radius: 6px; font-size: 11.5px; font-weight: 600; cursor: pointer; display: inline-flex; align-items: center; gap: 3px; transition: 0.15s; }
+        .msg.received .msg-action-btn { background: rgba(102, 126, 234, 0.14); color: var(--text-main); }
+        .msg-action-btn:hover { opacity: 0.85; transform: translateY(-1px); }
+        
+        .msg-action-btn.liked-active { background: #e53e3e !important; color: white !important; }
+        .msg-action-btn.dl-btn { background: #38a169; color: white !important; }
+        .msg-action-btn.fwd-btn { background: #3182ce; color: white !important; }
+
+        /* Comments Section Inside Message Bubble */
+        .comments-wrapper { margin-top: 8px; padding-top: 6px; border-top: 1px dashed rgba(128,128,128,0.3); font-size: 12.5px; }
+        .comment-item { background: rgba(0,0,0,0.14); padding: 5px 9px; border-radius: 8px; margin-bottom: 4px; display: flex; justify-content: space-between; align-items: center; gap: 6px; }
+        .msg.received .comment-item { background: rgba(0,0,0,0.05); }
+        .comment-author { font-weight: bold; font-size: 11px; margin-right: 5px; }
+        .del-comment-btn { background: none; border: none; color: inherit; opacity: 0.6; cursor: pointer; font-size: 11px; padding: 0 3px; }
+        .del-comment-btn:hover { opacity: 1; color: #ff4d4d; }
+
+        .comment-input-box { display: flex; gap: 5px; margin-top: 6px; }
+        .comment-input-box input { flex: 1; padding: 5px 10px; border-radius: 15px; border: 1px solid rgba(128,128,128,0.4); font-size: 12px; background: rgba(255,255,255,0.9); color: #2d3748; }
+        .comment-input-box button { background: #2d3748; color: white; border: none; border-radius: 15px; padding: 5px 10px; font-size: 11.5px; font-weight: bold; cursor: pointer; }
+
         .msg-time { display: block; font-size: 10px; margin-top: 4px; opacity: 0.75; text-align: right; }
+        
+        .delete-msg-btn { position: absolute; top: 6px; right: 7px; background: rgba(0,0,0,0.35); color: white; border: none; border-radius: 50%; width: 20px; height: 20px; font-size: 11px; cursor: pointer; display: flex; align-items: center; justify-content: center; opacity: 0.75; z-index: 5; }
+        .delete-msg-btn:hover { opacity: 1; background: #e53e3e; }
 
         .chat-input { padding: 12px 16px; background: var(--sidebar-bg); border-top: 1px solid var(--border-color); display: flex; align-items: center; gap: 8px; }
         .media-btn { background: var(--chat-bg); border: 1px solid var(--border-color); color: var(--text-main); width: 40px; height: 40px; border-radius: 50%; cursor: pointer; font-size: 18px; display: flex; align-items: center; justify-content: center; }
@@ -109,10 +136,9 @@
         .chat-input input[type="text"] { flex: 1; border-radius: 25px; padding: 11px 16px; background: var(--chat-bg); color: var(--text-main); border: 1px solid var(--border-color); font-size: var(--font-size); }
         .send-btn { background: var(--primary-gradient); color: white; border: none; padding: 11px 20px; border-radius: 25px; font-weight: bold; cursor: pointer; }
 
-        /* Modals (Camera, Video Call, Settings, Admin Panel) */
-        #camera-modal, #video-call-modal, #settings-modal, #admin-modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.7); justify-content: center; align-items: center; z-index: 2000; }
-        .camera-box, .video-box, .settings-content, .admin-content { background: var(--sidebar-bg); padding: 25px; border-radius: 15px; text-align: center; color: var(--text-main); max-width: 500px; width: 90%; max-height: 90vh; overflow-y: auto; box-shadow: 0 10px 30px rgba(0,0,0,0.3); }
-        .camera-box video, .video-box video { width: 100%; border-radius: 10px; background: black; max-height: 350px; }
+        #camera-modal, #video-call-modal, #settings-modal, #admin-modal, #forward-modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.7); justify-content: center; align-items: center; z-index: 2000; }
+        .camera-box, .video-box, .settings-content, .admin-content, .forward-content { background: var(--sidebar-bg); padding: 25px; border-radius: 15px; text-align: center; color: var(--text-main); max-width: 500px; width: 90%; max-height: 90vh; overflow-y: auto; box-shadow: 0 10px 30px rgba(0,0,0,0.3); }
+        .camera-box video, .video-box video { width: 100%; border-radius: 10px; background: black; max-height: 350px; object-fit: cover; }
         .camera-box canvas { display: none; }
         .modal-btn-row { display: flex; gap: 10px; justify-content: center; margin-top: 15px; }
 
@@ -122,8 +148,15 @@
         .theme-btn { padding: 6px 12px; border: 1px solid var(--border-color); border-radius: 6px; cursor: pointer; background: var(--chat-bg); color: var(--text-main); font-size: 13px; }
         .theme-btn.active { background: var(--primary-color); color: white; }
 
-        .admin-user-row { display: flex; justify-content: space-between; align-items: center; padding: 8px 0; border-bottom: 1px solid var(--border-color); font-size: 14px; }
+        .admin-user-row, .forward-target-row { display: flex; justify-content: space-between; align-items: center; padding: 10px 12px; border-bottom: 1px solid var(--border-color); font-size: 14px; }
+        .forward-target-row:hover { background: rgba(102, 126, 234, 0.1); border-radius: 8px; }
         .ban-btn { background: #ff4d4d; color: white; border: none; padding: 5px 10px; border-radius: 6px; cursor: pointer; font-size: 12px; }
+        .fwd-send-btn { background: #3182ce; color: white; border: none; padding: 6px 14px; border-radius: 6px; cursor: pointer; font-size: 12.5px; font-weight: bold; }
+
+        #toast-msg { visibility: hidden; min-width: 220px; background-color: #2d3748; color: #fff; text-align: center; border-radius: 25px; padding: 10px 20px; position: fixed; z-index: 3000; bottom: 30px; left: 50%; transform: translateX(-50%); font-size: 13.5px; box-shadow: 0 5px 15px rgba(0,0,0,0.3); }
+        #toast-msg.show { visibility: visible; animation: fadein 0.3s, fadeout 0.3s 2.2s; }
+        @keyframes fadein { from {bottom: 10px; opacity: 0;} to {bottom: 30px; opacity: 1;} }
+        @keyframes fadeout { from {bottom: 30px; opacity: 1;} to {bottom: 10px; opacity: 0;} }
 
         @media (max-width: 720px) {
             #chat-app { flex-direction: column; height: 96vh; }
@@ -133,6 +166,8 @@
     </style>
 </head>
 <body>
+
+    <div id="toast-msg">Copied!</div>
 
     <div class="auth-container" id="auth-container">
         <div class="logo-badge">M</div>
@@ -203,6 +238,16 @@
         </div>
     </div>
 
+    <!-- Forward Message Modal -->
+    <div id="forward-modal">
+        <div class="forward-content">
+            <h3>↪️ Forward Message To...</h3>
+            <p style="font-size: 13px; color: var(--text-muted); margin-bottom: 12px;">Select a chat room or user to forward this item:</p>
+            <div id="forward-targets-list" style="max-height: 280px; overflow-y: auto; text-align: left; border-top: 1px solid var(--border-color); margin-bottom: 15px;"></div>
+            <button onclick="closeForwardModal()" class="btn-primary" style="background: #718096;">Cancel</button>
+        </div>
+    </div>
+
     <!-- Admin Panel Modal -->
     <div id="admin-modal">
         <div class="admin-content">
@@ -222,7 +267,7 @@
             <video id="camera-stream" autoplay playsinline></video>
             <canvas id="camera-canvas"></canvas>
             <div class="modal-btn-row">
-                <button class="btn-primary" onclick="capturePhoto()" style="background: #38a169;">Capture & Send</button>
+                <button class="btn-primary" id="capture-btn" onclick="capturePhoto()" style="background: #38a169;" disabled>Loading Camera...</button>
                 <button class="btn-primary" onclick="closeCameraModal()" style="background: #e53e3e;">Cancel</button>
             </div>
         </div>
@@ -299,7 +344,10 @@
         let selectedChat = 'PUBLIC_ROOM';
         let allUsers = [];
         let messageInterval = null;
-        let lastMessageCount = 0;
+        let lastMessageSnapshot = '';
+        let messageCache = {};
+        let openCommentBoxes = {}; // Tracks which message comment inputs are open
+        let messageToForward = null;
 
         let mediaRecorder = null;
         let audioChunks = [];
@@ -309,6 +357,13 @@
         let videoCallStreamObj = null;
 
         const allowedDomains = ['gmail.com', 'yahoo.com', 'outlook.com', 'hotmail.com', 'icloud.com', 'live.com', 'aol.com', 'protonmail.com', 'yandex.com', 'zoho.com', 'edu.et', 'gov.et'];
+
+        function showToast(text) {
+            const toast = document.getElementById('toast-msg');
+            toast.innerText = text;
+            toast.className = 'show';
+            setTimeout(() => { toast.className = toast.className.replace('show', ''); }, 2500);
+        }
 
         function isRealEmail(email) {
             const emailRegex = /^[a-zA-Z0-9._%+-]+@([a-zA-Z0-9.-]+\.[a-zA-Z]{2,})$/;
@@ -432,7 +487,7 @@
 
         function selectChat(target) {
             selectedChat = target;
-            lastMessageCount = 0;
+            lastMessageSnapshot = '';
             renderUsers(allUsers);
 
             const avatarImg = document.getElementById('chat-with-avatar');
@@ -463,13 +518,186 @@
             messageInterval = setInterval(loadMessages, 1500);
         }
 
+        // LIKE / UNLIKE MESSAGE
+        async function toggleLike(msgId) {
+            await fetch('/messages/like', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ messageId: msgId, username: loggedInUser })
+            });
+            lastMessageSnapshot = '';
+            loadMessages();
+        }
+
+        // TOGGLE COMMENT INPUT BOX
+        function toggleCommentBox(msgId) {
+            openCommentBoxes[msgId] = !openCommentBoxes[msgId];
+            lastMessageSnapshot = '';
+            loadMessages();
+        }
+
+        // SUBMIT COMMENT
+        async function submitComment(msgId) {
+            const input = document.getElementById(`comment-input-${msgId}`);
+            if (!input) return;
+            const commentText = input.value.trim();
+            if (!commentText) return;
+
+            input.value = '';
+            await fetch('/messages/comment', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ messageId: msgId, username: loggedInUser, commentText })
+            });
+            openCommentBoxes[msgId] = true;
+            lastMessageSnapshot = '';
+            loadMessages();
+        }
+
+        // DELETE COMMENT
+        async function deleteComment(commentId) {
+            if (!confirm('Delete this comment?')) return;
+            await fetch('/messages/delete-comment', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ username: loggedInUser, commentId })
+            });
+            lastMessageSnapshot = '';
+            loadMessages();
+        }
+
+        // COPY MESSAGE OR MEDIA
+        async function copyMessageItem(msgId) {
+            const msg = messageCache[msgId];
+            if (!msg) return;
+
+            try {
+                if (msg.media_type === 'image' && msg.media_data && navigator.clipboard && window.ClipboardItem) {
+                    const res = await fetch(msg.media_data);
+                    const blob = await res.blob();
+                    if (blob.type === 'image/png') {
+                        await navigator.clipboard.write([new ClipboardItem({ 'image/png': blob })]);
+                        showToast('📋 Image copied to clipboard!');
+                        return;
+                    }
+                }
+            } catch (err) {}
+
+            const textToCopy = msg.message || msg.file_name || `[${msg.media_type.toUpperCase()} Attachment]`;
+            if (navigator.clipboard && navigator.clipboard.writeText) {
+                await navigator.clipboard.writeText(textToCopy);
+                showToast('📋 Copied to clipboard!');
+            } else {
+                const tempInput = document.createElement('textarea');
+                tempInput.value = textToCopy;
+                document.body.appendChild(tempInput);
+                tempInput.select();
+                document.execCommand('copy');
+                document.body.removeChild(tempInput);
+                showToast('📋 Copied to clipboard!');
+            }
+        }
+
+        // DOWNLOAD MEDIA / FILE
+        function downloadMediaFile(msgId) {
+            const msg = messageCache[msgId];
+            if (!msg || !msg.media_data) {
+                alert('File data not available.');
+                return;
+            }
+            const defaultFileName = msg.file_name || `mak_chat_${msg.media_type}_${msg.id}`;
+            try {
+                const parts = msg.media_data.split(',');
+                const mimeMatch = parts[0].match(/:(.*?);/);
+                const mime = mimeMatch ? mimeMatch[1] : 'application/octet-stream';
+                const byteCharacters = atob(parts[1]);
+                const byteNumbers = new Array(byteCharacters.length);
+                for (let i = 0; i < byteCharacters.length; i++) {
+                    byteNumbers[i] = byteCharacters.charCodeAt(i);
+                }
+                const byteArray = new Uint8Array(byteNumbers);
+                const blob = new Blob([byteArray], { type: mime });
+                const blobUrl = URL.createObjectURL(blob);
+
+                const link = document.createElement('a');
+                link.href = blobUrl;
+                link.download = defaultFileName;
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+                setTimeout(() => URL.revokeObjectURL(blobUrl), 5000);
+                showToast('⬇️ Downloading...');
+            } catch (e) {
+                const link = document.createElement('a');
+                link.href = msg.media_data;
+                link.download = defaultFileName;
+                link.click();
+            }
+        }
+
+        // FORWARD MESSAGE / MEDIA / FILE
+        function openForwardModal(msgId) {
+            const msg = messageCache[msgId];
+            if (!msg) return;
+            messageToForward = msg;
+
+            const listContainer = document.getElementById('forward-targets-list');
+            listContainer.innerHTML = '';
+
+            const pubRow = document.createElement('div');
+            pubRow.className = 'forward-target-row';
+            pubRow.innerHTML = `<span>🌍 <strong>Public Chat</strong></span> <button class="fwd-send-btn" onclick="executeForward('PUBLIC_ROOM')">Forward ➤</button>`;
+            listContainer.appendChild(pubRow);
+
+            allUsers.forEach(u => {
+                const row = document.createElement('div');
+                row.className = 'forward-target-row';
+                row.innerHTML = `<span>👤 ${u.username}</span> <button class="fwd-send-btn" onclick="executeForward('${u.username}')">Forward ➤</button>`;
+                listContainer.appendChild(row);
+            });
+
+            document.getElementById('forward-modal').style.display = 'flex';
+        }
+
+        function closeForwardModal() {
+            document.getElementById('forward-modal').style.display = 'none';
+            messageToForward = null;
+        }
+
+        async function executeForward(targetReceiver) {
+            if (!messageToForward) return;
+            const forwardedText = messageToForward.message 
+                ? `↪️ Forwarded: ${messageToForward.message}` 
+                : `↪️ Forwarded ${messageToForward.media_type}`;
+
+            await sendPayload({
+                sender: loggedInUser,
+                receiver: targetReceiver,
+                message: forwardedText,
+                media_type: messageToForward.media_type,
+                media_data: messageToForward.media_data,
+                file_name: messageToForward.file_name
+            });
+
+            closeForwardModal();
+            showToast(`↪️ Forwarded to ${targetReceiver === 'PUBLIC_ROOM' ? 'Public Chat' : targetReceiver}`);
+        }
+
         async function loadMessages() {
             if (!selectedChat) return;
+            // Pause refresh if user is actively typing inside a comment box
+            if (document.activeElement && document.activeElement.id && document.activeElement.id.startsWith('comment-input-')) {
+                return;
+            }
+
             try {
                 const response = await fetch(`/messages?user1=${encodeURIComponent(loggedInUser)}&user2=${encodeURIComponent(selectedChat)}`);
                 const messages = await response.json();
-                if (messages.length === lastMessageCount) return;
-                lastMessageCount = messages.length;
+                
+                // Snapshot includes message IDs, likes count, and comments count
+                const currentSnapshot = messages.map(m => `${m.id}:${(m.likes||[]).length}:${(m.comments||[]).length}:${openCommentBoxes[m.id]?1:0}`).join('|');
+                if (currentSnapshot === lastMessageSnapshot && messages.length > 0) return;
+                lastMessageSnapshot = currentSnapshot;
 
                 const container = document.getElementById('messages-container');
                 container.innerHTML = '';
@@ -479,26 +707,75 @@
                 }
 
                 messages.forEach(msg => {
+                    messageCache[msg.id] = msg;
+
                     const div = document.createElement('div');
                     const isMine = msg.sender === loggedInUser;
                     div.className = 'msg ' + (isMine ? 'sent' : 'received');
 
                     let senderHeader = (!isMine && selectedChat === 'PUBLIC_ROOM') ? `<span class="sender-tag">${msg.sender}</span>` : '';
                     let media = '';
-                    
+
                     if (msg.media_type === 'image') {
-                        media = `<img src="${msg.media_data}" alt="photo">`;
+                        media = `<img src="${msg.media_data}" alt="Photo">`;
                     } else if (msg.media_type === 'video') {
                         media = `<video controls src="${msg.media_data}"></video>`;
                     } else if (msg.media_type === 'audio') {
                         media = `<audio controls src="${msg.media_data}"></audio>`;
                     } else if (msg.media_type === 'file') {
-                        media = `<div class="file-box">📁 <a href="${msg.media_data}" download="${msg.file_name || 'download'}">${msg.file_name || 'Download File'}</a></div>`;
+                        media = `<div class="file-box"><span>📁 <strong>${msg.file_name || 'Document'}</strong></span></div>`;
                     }
 
                     const text = msg.message ? `<div>${msg.message}</div>` : '';
                     const time = msg.timestamp ? new Date(msg.timestamp).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}) : '';
-                    div.innerHTML = `${senderHeader}${text}${media}<span class="msg-time">${time}</span>`;
+                    
+                    let canDelete = isMine || (loggedInRole === 'admin');
+                    let deleteBtn = canDelete ? `<button class="delete-msg-btn" onclick="deleteMessage(${msg.id})" title="Delete Message">✕</button>` : '';
+
+                    // Like Button & Counter
+                    const likesList = msg.likes || [];
+                    const iLiked = likesList.includes(loggedInUser);
+                    const likeCountText = likesList.length > 0 ? ` ${likesList.length}` : '';
+                    const likeBtnTitle = likesList.length > 0 ? `Liked by: ${likesList.join(', ')}` : 'Like';
+
+                    // Comments Count
+                    const commentsList = msg.comments || [];
+                    const commentCountText = commentsList.length > 0 ? ` (${commentsList.length})` : '';
+
+                    let downloadButtonHTML = msg.media_data 
+                        ? `<button class="msg-action-btn dl-btn" onclick="downloadMediaFile(${msg.id})" title="Download">⬇️ Download</button>` 
+                        : '';
+
+                    let actionBar = `
+                        <div class="msg-actions">
+                            <button class="msg-action-btn ${iLiked ? 'liked-active' : ''}" onclick="toggleLike(${msg.id})" title="${likeBtnTitle}">👍 Like${likeCountText}</button>
+                            <button class="msg-action-btn" onclick="toggleCommentBox(${msg.id})" title="View or Write Comments">💬 Comment${commentCountText}</button>
+                            <button class="msg-action-btn" onclick="copyMessageItem(${msg.id})" title="Copy">📋 Copy</button>
+                            ${downloadButtonHTML}
+                            <button class="msg-action-btn fwd-btn" onclick="openForwardModal(${msg.id})" title="Forward">↪️ Forward</button>
+                        </div>
+                    `;
+
+                    // Render Comments Section if there are comments or the user opened the comment input
+                    let commentsHTML = '';
+                    if (commentsList.length > 0 || openCommentBoxes[msg.id]) {
+                        let itemsHTML = commentsList.map(c => {
+                            const canDelComment = (c.username === loggedInUser) || (loggedInRole === 'admin');
+                            const delCBtn = canDelComment ? `<button class="del-comment-btn" onclick="deleteComment(${c.id})" title="Delete comment">✕</button>` : '';
+                            return `<div class="comment-item"><div><span class="comment-author">${c.username.split('@')[0]}:</span><span>${c.comment_text}</span></div>${delCBtn}</div>`;
+                        }).join('');
+
+                        let inputHTML = openCommentBoxes[msg.id] ? `
+                            <div class="comment-input-box">
+                                <input type="text" id="comment-input-${msg.id}" placeholder="Write a comment..." onkeypress="if(event.key==='Enter') submitComment(${msg.id})">
+                                <button onclick="submitComment(${msg.id})">Post</button>
+                            </div>
+                        ` : '';
+
+                        commentsHTML = `<div class="comments-wrapper">${itemsHTML}${inputHTML}</div>`;
+                    }
+
+                    div.innerHTML = `${deleteBtn}${senderHeader}${text}${media}${actionBar}${commentsHTML}<span class="msg-time">${time}</span>`;
                     container.appendChild(div);
                 });
                 container.scrollTop = container.scrollHeight;
@@ -513,7 +790,22 @@
             await sendPayload({ sender: loggedInUser, receiver: selectedChat, message, media_type: 'text' });
         }
 
-        // Admin Panel Actions
+        async function deleteMessage(messageId) {
+            if (confirm('Are you sure you want to delete this message?')) {
+                const res = await fetch('/delete-message', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ username: loggedInUser, messageId })
+                });
+                if (res.ok) {
+                    lastMessageSnapshot = '';
+                    loadMessages();
+                } else {
+                    alert('Failed to delete message');
+                }
+            }
+        }
+
         function openAdminModal() {
             const listContainer = document.getElementById('admin-users-list');
             listContainer.innerHTML = '';
@@ -538,39 +830,75 @@
                     alert('User removed successfully');
                     loadUsers();
                     openAdminModal();
-                } else {
-                    alert('Failed to remove user');
-                }
+                } else { alert('Failed to remove user'); }
             }
         }
 
-        // Camera Snapshot
         async function openCameraModal() {
             const modal = document.getElementById('camera-modal');
             const videoElem = document.getElementById('camera-stream');
+            const captureBtn = document.getElementById('capture-btn');
+            
+            captureBtn.disabled = true;
+            captureBtn.innerText = 'Loading Camera...';
             modal.style.display = 'flex';
+
             try {
-                cameraStreamObj = await navigator.mediaDevices.getUserMedia({ video: true, audio: false });
+                cameraStreamObj = await navigator.mediaDevices.getUserMedia({ 
+                    video: { facingMode: 'user', width: { ideal: 1280 }, height: { ideal: 720 } }, 
+                    audio: false 
+                });
                 videoElem.srcObject = cameraStreamObj;
-            } catch (err) { alert('Camera access denied.'); modal.style.display = 'none'; }
-        }
-        function closeCameraModal() {
-            if (cameraStreamObj) cameraStreamObj.getTracks().forEach(t => t.stop());
-            document.getElementById('camera-modal').style.display = 'none';
-        }
-        async function capturePhoto() {
-            const videoElem = document.getElementById('camera-stream');
-            const canvas = document.getElementById('camera-canvas');
-            canvas.width = videoElem.videoWidth || 640;
-            canvas.height = videoElem.videoHeight || 480;
-            const ctx = canvas.getContext('2d');
-            ctx.drawImage(videoElem, 0, 0, canvas.width, canvas.height);
-            const dataURL = canvas.toDataURL('image/png');
-            closeCameraModal();
-            await sendPayload({ sender: loggedInUser, receiver: selectedChat, message: '📸 Camera Snapshot', media_type: 'image', media_data: dataURL });
+
+                videoElem.onloadedmetadata = async () => {
+                    try {
+                        await videoElem.play();
+                        captureBtn.disabled = false;
+                        captureBtn.innerText = '📸 Capture & Send';
+                    } catch (e) {}
+                };
+            } catch (err) { 
+                alert('Camera access denied or no camera found.'); 
+                modal.style.display = 'none'; 
+            }
         }
 
-        // Video Call
+        function closeCameraModal() {
+            if (cameraStreamObj) {
+                cameraStreamObj.getTracks().forEach(t => t.stop());
+                cameraStreamObj = null;
+            }
+            document.getElementById('camera-stream').srcObject = null;
+            document.getElementById('camera-modal').style.display = 'none';
+        }
+
+        async function capturePhoto() {
+            const videoElem = document.getElementById('camera-stream');
+            if (videoElem.videoWidth === 0 || videoElem.videoHeight === 0) {
+                alert('Camera is still warming up. Please wait 1 second and click Capture again.');
+                return;
+            }
+
+            const canvas = document.getElementById('camera-canvas');
+            canvas.width = videoElem.videoWidth;
+            canvas.height = videoElem.videoHeight;
+            const ctx = canvas.getContext('2d');
+            ctx.drawImage(videoElem, 0, 0, canvas.width, canvas.height);
+            
+            const dataURL = canvas.toDataURL('image/jpeg', 0.85);
+            const photoName = `camera_${Date.now()}.jpg`;
+            closeCameraModal();
+
+            await sendPayload({ 
+                sender: loggedInUser, 
+                receiver: selectedChat, 
+                message: '📸 Camera Photo', 
+                media_type: 'image', 
+                media_data: dataURL,
+                file_name: photoName
+            });
+        }
+
         async function startVideoCall() {
             const modal = document.getElementById('video-call-modal');
             const localVideo = document.getElementById('local-video');
@@ -578,10 +906,14 @@
             try {
                 videoCallStreamObj = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
                 localVideo.srcObject = videoCallStreamObj;
+                localVideo.onloadedmetadata = () => localVideo.play();
             } catch (err) { alert('Camera/Mic access denied.'); modal.style.display = 'none'; }
         }
         function endVideoCall() {
-            if (videoCallStreamObj) videoCallStreamObj.getTracks().forEach(t => t.stop());
+            if (videoCallStreamObj) {
+                videoCallStreamObj.getTracks().forEach(t => t.stop());
+                videoCallStreamObj = null;
+            }
             document.getElementById('video-call-modal').style.display = 'none';
         }
 
@@ -595,7 +927,14 @@
 
             const reader = new FileReader();
             reader.onload = async function(e) {
-                await sendPayload({ sender: loggedInUser, receiver: selectedChat, message: type === 'file' ? `📄 File: ${file.name}` : '', media_type: type, media_data: e.target.result, file_name: file.name });
+                await sendPayload({ 
+                    sender: loggedInUser, 
+                    receiver: selectedChat, 
+                    message: type === 'file' ? `📄 Shared File` : '', 
+                    media_type: type, 
+                    media_data: e.target.result, 
+                    file_name: file.name 
+                });
             };
             reader.readAsDataURL(file);
             event.target.value = '';
@@ -613,7 +952,14 @@
                         const blob = new Blob(audioChunks, { type: 'audio/webm' });
                         const reader = new FileReader();
                         reader.onload = async function(e) {
-                            await sendPayload({ sender: loggedInUser, receiver: selectedChat, message: '🎤 Voice Note', media_type: 'audio', media_data: e.target.result });
+                            await sendPayload({ 
+                                sender: loggedInUser, 
+                                receiver: selectedChat, 
+                                message: '🎤 Voice Note', 
+                                media_type: 'audio', 
+                                media_data: e.target.result,
+                                file_name: `voice_note_${Date.now()}.webm`
+                            });
                         };
                         reader.readAsDataURL(blob);
                         stream.getTracks().forEach(t => t.stop());
@@ -631,6 +977,7 @@
 
         async function sendPayload(payload) {
             await fetch('/messages', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
+            lastMessageSnapshot = '';
             loadMessages();
         }
 

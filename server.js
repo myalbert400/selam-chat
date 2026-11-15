@@ -37,6 +37,23 @@ db.serialize(() => {
         file_name TEXT,
         timestamp DATETIME DEFAULT CURRENT_TIMESTAMP
     )`);
+
+    // Table for Likes on messages/posts
+    db.run(`CREATE TABLE IF NOT EXISTS likes (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        message_id INTEGER,
+        username TEXT,
+        UNIQUE(message_id, username)
+    )`);
+
+    // Table for Comments on messages/posts
+    db.run(`CREATE TABLE IF NOT EXISTS comments (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        message_id INTEGER,
+        username TEXT,
+        comment_text TEXT,
+        timestamp DATETIME DEFAULT CURRENT_TIMESTAMP
+    )`);
 });
 
 const allowedDomains = [
@@ -52,14 +69,12 @@ function verifyEmailDomain(email) {
     return allowedDomains.includes(match[1]) || match[1].endsWith('.edu') || match[1].endsWith('.gov');
 }
 
-// Register (첫 번째로 가입하는 사람은 자동으로 Admin ሊሆን ይችላል ወይም እንደ ፍላጎት)
 app.post('/register', async (req, res) => {
     const { username, password, phone } = req.body;
     if (!username || !password) return res.status(400).json({ error: 'Please enter email and password' });
     if (!verifyEmailDomain(username)) return res.status(400).json({ error: 'Invalid email domain!' });
     if (password.length < 6) return res.status(400).json({ error: 'Password must be at least 6 characters!' });
 
-    // Check if user table is empty, if so make the first user an Admin
     db.get(`SELECT COUNT(*) as count FROM users`, async (err, row) => {
         const role = (row && row.count === 0) ? 'admin' : 'user';
         const hashedPassword = await bcrypt.hash(password, 10);
@@ -105,7 +120,6 @@ app.post('/update-profile', async (req, res) => {
     });
 });
 
-// Admin API: Delete any user
 app.post('/admin/delete-user', (req, res) => {
     const { adminUser, targetUser } = req.body;
     db.get(`SELECT role FROM users WHERE username = ?`, [adminUser], (err, row) => {
@@ -114,7 +128,83 @@ app.post('/admin/delete-user', (req, res) => {
         }
         db.run(`DELETE FROM users WHERE username = ?`, [targetUser], () => {
             db.run(`DELETE FROM messages WHERE sender = ? OR receiver = ?`, [targetUser, targetUser]);
+            db.run(`DELETE FROM likes WHERE username = ?`, [targetUser]);
+            db.run(`DELETE FROM comments WHERE username = ?`, [targetUser]);
             res.json({ message: 'User deleted successfully by Admin' });
+        });
+    });
+});
+
+app.post('/delete-message', (req, res) => {
+    const { username, messageId } = req.body;
+    
+    db.get(`SELECT sender FROM messages WHERE id = ?`, [messageId], (err, msgRow) => {
+        if (!msgRow) return res.status(404).json({ error: 'Message not found' });
+
+        db.get(`SELECT role FROM users WHERE username = ?`, [username], (err, userRow) => {
+            const isAdmin = userRow && userRow.role === 'admin';
+            const isOwner = msgRow.sender === username;
+
+            if (isAdmin || isOwner) {
+                db.run(`DELETE FROM messages WHERE id = ?`, [messageId], () => {
+                    db.run(`DELETE FROM likes WHERE message_id = ?`, [messageId]);
+                    db.run(`DELETE FROM comments WHERE message_id = ?`, [messageId]);
+                    res.json({ message: 'Message deleted successfully' });
+                });
+            } else {
+                res.status(403).json({ error: 'Unauthorized to delete this message' });
+            }
+        });
+    });
+});
+
+// Toggle Like on a Message/Post
+app.post('/messages/like', (req, res) => {
+    const { messageId, username } = req.body;
+    if (!messageId || !username) return res.status(400).json({ error: 'Missing data' });
+
+    db.get(`SELECT id FROM likes WHERE message_id = ? AND username = ?`, [messageId, username], (err, row) => {
+        if (row) {
+            db.run(`DELETE FROM likes WHERE id = ?`, [row.id], () => {
+                res.json({ liked: false });
+            });
+        } else {
+            db.run(`INSERT INTO likes (message_id, username) VALUES (?, ?)`, [messageId, username], () => {
+                res.json({ liked: true });
+            });
+        }
+    });
+});
+
+// Add Comment to a Message/Post
+app.post('/messages/comment', (req, res) => {
+    const { messageId, username, commentText } = req.body;
+    if (!messageId || !username || !commentText) return res.status(400).json({ error: 'Missing data' });
+
+    db.run(`INSERT INTO comments (message_id, username, comment_text) VALUES (?, ?, ?)`, 
+        [messageId, username, commentText], function(err) {
+        if (err) return res.status(500).json({ error: err.message });
+        res.json({ id: this.lastID });
+    });
+});
+
+// Delete Comment (Owner or Admin)
+app.post('/messages/delete-comment', (req, res) => {
+    const { username, commentId } = req.body;
+    db.get(`SELECT username FROM comments WHERE id = ?`, [commentId], (err, commentRow) => {
+        if (!commentRow) return res.status(404).json({ error: 'Comment not found' });
+
+        db.get(`SELECT role FROM users WHERE username = ?`, [username], (err, userRow) => {
+            const isAdmin = userRow && userRow.role === 'admin';
+            const isOwner = commentRow.username === username;
+
+            if (isAdmin || isOwner) {
+                db.run(`DELETE FROM comments WHERE id = ?`, [commentId], () => {
+                    res.json({ message: 'Comment deleted' });
+                });
+            } else {
+                res.status(403).json({ error: 'Unauthorized' });
+            }
         });
     });
 });
@@ -123,6 +213,8 @@ app.post('/delete-account', (req, res) => {
     const { username } = req.body;
     db.run(`DELETE FROM users WHERE username = ?`, [username], () => {
         db.run(`DELETE FROM messages WHERE sender = ? OR receiver = ?`, [username, username]);
+        db.run(`DELETE FROM likes WHERE username = ?`, [username]);
+        db.run(`DELETE FROM comments WHERE username = ?`, [username]);
         res.json({ message: 'Account deleted' });
     });
 });
@@ -149,20 +241,38 @@ app.post('/messages', (req, res) => {
     );
 });
 
+// Get Messages along with their Likes and Comments
 app.get('/messages', (req, res) => {
     const { user1, user2 } = req.query;
+    let query, params;
+
     if (user2 === 'PUBLIC_ROOM') {
-        db.all(`SELECT * FROM messages WHERE receiver = 'PUBLIC_ROOM' ORDER BY timestamp ASC`, [], (err, rows) => {
-            if (err) return res.status(500).json({ error: err.message });
-            res.json(rows);
-        });
+        query = `SELECT * FROM messages WHERE receiver = 'PUBLIC_ROOM' ORDER BY timestamp ASC`;
+        params = [];
     } else {
-        db.all(`SELECT * FROM messages WHERE (sender = ? AND receiver = ?) OR (sender = ? AND receiver = ?) ORDER BY timestamp ASC`, 
-            [user1, user2, user2, user1], (err, rows) => {
-            if (err) return res.status(500).json({ error: err.message });
-            res.json(rows);
-        });
+        query = `SELECT * FROM messages WHERE (sender = ? AND receiver = ?) OR (sender = ? AND receiver = ?) ORDER BY timestamp ASC`;
+        params = [user1, user2, user2, user1];
     }
+
+    db.all(query, params, (err, messages) => {
+        if (err) return res.status(500).json({ error: err.message });
+        if (messages.length === 0) return res.json([]);
+
+        db.all(`SELECT * FROM likes`, [], (err, likes) => {
+            db.all(`SELECT * FROM comments ORDER BY timestamp ASC`, [], (err, comments) => {
+                const enriched = messages.map(msg => {
+                    const msgLikes = (likes || []).filter(l => l.message_id === msg.id).map(l => l.username);
+                    const msgComments = (comments || []).filter(c => c.message_id === msg.id);
+                    return {
+                        ...msg,
+                        likes: msgLikes,
+                        comments: msgComments
+                    };
+                });
+                res.json(enriched);
+            });
+        });
+    });
 });
 
 app.listen(PORT, () => {
