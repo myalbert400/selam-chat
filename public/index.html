@@ -1,0 +1,277 @@
+<!DOCTYPE html>
+<html lang="am">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ሰላም ቻት (Selam Chat)</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #f0f2f5;
+            margin: 0;
+            padding: 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+        }
+        .container {
+            width: 100%;
+            max-width: 420px;
+            background: white;
+            padding: 25px;
+            border-radius: 10px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+        }
+        h2 {
+            text-align: center;
+            color: #2c3e50;
+            margin-bottom: 20px;
+        }
+        .form-group {
+            margin-bottom: 15px;
+        }
+        label {
+            display: block;
+            margin-bottom: 5px;
+            color: #555;
+            font-weight: 500;
+        }
+        input {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+            box-sizing: border-box;
+            font-size: 14px;
+        }
+        button {
+            width: 100%;
+            padding: 10px;
+            background-color: #0084ff;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            font-size: 16px;
+            cursor: pointer;
+            font-weight: bold;
+            margin-top: 10px;
+        }
+        button:hover {
+            background-color: #006dd6;
+        }
+        .switch-text {
+            text-align: center;
+            margin-top: 15px;
+            font-size: 14px;
+            color: #666;
+        }
+        .switch-text span {
+            color: #0084ff;
+            cursor: pointer;
+            font-weight: bold;
+        }
+        /* የቻት ገጽ ስታይል */
+        #chat-section {
+            display: none;
+            width: 100%;
+            max-width: 600px;
+            height: 80vh;
+            background: white;
+            border-radius: 10px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+            flex-direction: column;
+        }
+        .chat-header {
+            padding: 15px;
+            background-color: #0084ff;
+            color: white;
+            border-top-left-radius: 10px;
+            border-top-right-radius: 10px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .chat-messages {
+            flex: 1;
+            padding: 15px;
+            overflow-y: auto;
+            background-color: #f9f9f9;
+            border-bottom: 1px solid #ddd;
+        }
+        .message-item {
+            margin-bottom: 10px;
+            padding: 8px 12px;
+            background: #e4e6eb;
+            border-radius: 8px;
+            max-width: 70%;
+            word-wrap: break-word;
+        }
+        .message-item strong {
+            color: #0084ff;
+            display: block;
+            font-size: 12px;
+            margin-bottom: 2px;
+        }
+        .chat-input-area {
+            padding: 15px;
+            display: flex;
+            gap: 10px;
+        }
+        .chat-input-area input {
+            flex: 1;
+        }
+        .chat-input-area button {
+            width: 80px;
+            margin-top: 0;
+        }
+    </style>
+</head>
+<body>
+
+    <!-- የግባ / ተመዝገብ ክፍል (Auth Container) -->
+    <div class="container" id="auth-container">
+        <h2 id="form-title">ግባ (Login)</h2>
+        <div class="form-group">
+            <label for="username">መለያ ስም (Username)</label>
+            <input type="text" id="username" placeholder="መለያ ስምዎን ያስገቡ">
+        </div>
+        <div class="form-group">
+            <label for="password">ሚስጥር ቁጥር (Password)</label>
+            <input type="password" id="password" placeholder="ሚስጥር ቁጥር ያስገቡ">
+        </div>
+        <button id="auth-btn" onclick="handleAuth()">ግባ (Login)</button>
+        <div class="switch-text" id="switch-text">
+            አካውንት የለዎትም? <span onclick="toggleMode()">ይመዝገቡ (Register)</span>
+        </div>
+    </div>
+
+    <!-- የቻት ክፍል (Chat Section) -->
+    <div id="chat-section">
+        <div class="chat-header">
+            <h3 style="margin:0;">ሰላም ቻት (Selam Chat) - <span id="current-user"></span></h3>
+            <button onclick="logout()" style="width: auto; padding: 5px 10px; margin:0; background: #ff4d4d;">ውጣ (Logout)</button>
+        </div>
+        <div class="chat-messages" id="messages-container">
+            <!-- መልዕክቶች እዚህ ይደረደራሉ -->
+        </div>
+        <div class="chat-input-area">
+            <input type="text" id="message-input" placeholder="መልዕክት ይጻፉ (Type a message)...">
+            <button onclick="sendMessage()">ላክ (Send)</button>
+        </div>
+    </div>
+
+    <script>
+        let isLoginMode = true;
+        let loggedInUser = localStorage.getItem('chat_user') || null;
+
+        window.onload = () => {
+            if (loggedInUser) {
+                showChatSection();
+            }
+        };
+
+        function toggleMode() {
+            isLoginMode = !isLoginMode;
+            const title = document.getElementById('form-title');
+            const btn = document.getElementById('auth-btn');
+            const switchText = document.getElementById('switch-text');
+
+            if (isLoginMode) {
+                title.innerText = "ግባ (Login)";
+                btn.innerText = "ግባ (Login)";
+                switchText.innerHTML = 'አካውንት የለዎትም? <span onclick="toggleMode()">ይመዝገቡ (Register)</span>';
+            } else {
+                title.innerText = "ይመዝገቡ (Register)";
+                btn.innerText = "ተመዝገብ (Register)";
+                switchText.innerHTML = 'አካውንት አለዎት? <span onclick="toggleMode()">ግባ (Login)</span>';
+            }
+        }
+
+        async function handleAuth() {
+            const username = document.getElementById('username').value.trim();
+            const password = document.getElementById('password').value.trim();
+
+            if (!username || !password) {
+                alert('እባክዎ መለያ ስም (Username) እና ሚስጥር ቁጥር (Password) ይሙሉ!');
+                return;
+            }
+
+            const endpoint = isLoginMode ? '/login' : '/register';
+
+            try {
+                const response = await fetch(endpoint, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ username, password })
+                });
+
+                const data = await response.json();
+
+                if (response.ok) {
+                    if (isLoginMode) {
+                        loggedInUser = data.username;
+                        localStorage.setItem('chat_user', loggedInUser);
+                        showChatSection();
+                    } else {
+                        alert(data.message);
+                        toggleMode();
+                    }
+                } else {
+                    alert(data.error || 'ስህተት ተፈጥሯል');
+                }
+            } catch (err) {
+                alert('ሰርቨሩ ጋር መገናኘት አልተቻለም!');
+            }
+        }
+
+        function showChatSection() {
+            document.getElementById('auth-container').style.display = 'none';
+            document.getElementById('chat-section').style.display = 'flex';
+            document.getElementById('current-user').innerText = loggedInUser;
+            loadMessages();
+            setInterval(loadMessages, 2000);
+        }
+
+        function logout() {
+            localStorage.removeItem('chat_user');
+            location.reload();
+        }
+
+        async function sendMessage() {
+            const messageInput = document.getElementById('message-input');
+            const message = messageInput.value.trim();
+
+            if (!message) return;
+
+            await fetch('/messages', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ username: loggedInUser, message })
+            });
+
+            messageInput.value = '';
+            loadMessages();
+        }
+
+        async function loadMessages() {
+            try {
+                const response = await fetch('/messages');
+                const messages = await response.json();
+                const container = document.getElementById('messages-container');
+                container.innerHTML = '';
+
+                messages.forEach(msg => {
+                    const div = document.createElement('div');
+                    div.className = 'message-item';
+                    div.innerHTML = `<strong>${msg.username}</strong> ${msg.message}`;
+                    container.appendChild(div);
+                });
+                container.scrollTop = container.scrollHeight;
+            } catch (err) {
+                console.error('መልዕክቶችን ማምጣት አልተቻለም');
+            }
+        }
+    </script>
+</body>
+</html>
