@@ -1,1056 +1,301 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="am">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Mak Chat</title>
     <style>
-        :root {
-            --primary-gradient: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            --primary-color: #667eea;
-            --sent-bubble: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            --bg-color: #f0f2f5;
-            --sidebar-bg: #ffffff;
-            --chat-bg: #f8f9fa;
-            --text-main: #2d3748;
-            --text-muted: #718096;
-            --received-bubble: #ffffff;
-            --border-color: #e2e8f0;
-            --font-size: 14.5px;
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f0f2f5;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            margin: 0;
         }
-
-        [data-theme="ocean"] {
-            --primary-gradient: linear-gradient(135deg, #00c6ff 0%, #0072ff 100%);
-            --primary-color: #0072ff;
-            --sent-bubble: linear-gradient(135deg, #00c6ff 0%, #0072ff 100%);
+        .container {
+            background: white;
+            padding: 25px;
+            border-radius: 10px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+            width: 100%;
+            max-width: 450px;
         }
-        [data-theme="emerald"] {
-            --primary-gradient: linear-gradient(135deg, #11998e 0%, #38ef7d 100%);
-            --primary-color: #11998e;
-            --sent-bubble: linear-gradient(135deg, #11998e 0%, #2bc96b 100%);
+        h2, h3 { text-align: center; color: #333; margin-top: 0; }
+        input, button {
+            width: 100%;
+            padding: 10px;
+            margin: 8px 0;
+            border-radius: 5px;
+            border: 1px solid #ccc;
+            box-sizing: border-box;
+            font-size: 14px;
         }
-        [data-theme="sunset"] {
-            --primary-gradient: linear-gradient(135deg, #ff512f 0%, #dd2476 100%);
-            --primary-color: #dd2476;
-            --sent-bubble: linear-gradient(135deg, #ff512f 0%, #dd2476 100%);
+        input:disabled {
+            background-color: #e9ecef;
+            color: #6c757d;
+            cursor: not-allowed;
         }
-        [data-theme="dark"] {
-            --primary-gradient: linear-gradient(135deg, #434343 0%, #000000 100%);
-            --primary-color: #805ad5;
-            --sent-bubble: linear-gradient(135deg, #6b46c1 0%, #805ad5 100%);
-            --bg-color: #1a202c;
-            --sidebar-bg: #2d3748;
-            --chat-bg: #171923;
-            --text-main: #f7fafc;
-            --text-muted: #a0aec0;
-            --received-bubble: #2d3748;
-            --border-color: #4a5568;
+        button {
+            background-color: #0084ff;
+            color: white;
+            border: none;
+            font-weight: bold;
+            cursor: pointer;
         }
-
-        * { box-sizing: border-box; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
-        body { background: var(--primary-gradient); margin: 0; padding: 0; display: flex; justify-content: center; align-items: center; height: 100vh; color: var(--text-main); }
-
-        .auth-container { width: 90%; max-width: 410px; background: rgba(255, 255, 255, 0.96); padding: 30px; border-radius: 20px; box-shadow: 0 15px 35px rgba(0, 0, 0, 0.25); color: #2d3748; }
-        .logo-badge { width: 55px; height: 55px; background: var(--primary-gradient); color: white; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 26px; margin: 0 auto 12px; font-weight: bold; }
-        h2 { text-align: center; margin-bottom: 18px; color: #2d3748; }
-        .form-group { margin-bottom: 14px; }
-        label { display: block; margin-bottom: 5px; font-weight: 600; font-size: 13px; color: #4a5568; }
-        input { width: 100%; padding: 11px 14px; border: 2px solid #e2e8f0; border-radius: 10px; font-size: 14px; outline: none; }
-        input:focus { border-color: var(--primary-color); }
-        .btn-primary { width: 100%; padding: 12px; background: var(--primary-gradient); color: white; border: none; border-radius: 10px; font-size: 16px; font-weight: bold; cursor: pointer; margin-top: 6px; }
-        .switch-text { text-align: center; margin-top: 16px; font-size: 14px; color: #718096; }
-        .switch-text span { color: var(--primary-color); cursor: pointer; font-weight: bold; text-decoration: underline; }
-
-        #chat-app { display: none; width: 96%; max-width: 1120px; height: 90vh; background: var(--sidebar-bg); border-radius: 20px; box-shadow: 0 20px 50px rgba(0, 0, 0, 0.28); overflow: hidden; }
-        .sidebar { width: 325px; background: var(--sidebar-bg); border-right: 1px solid var(--border-color); display: flex; flex-direction: column; }
-        .sidebar-header { padding: 15px 20px; background: var(--primary-gradient); color: white; display: flex; justify-content: space-between; align-items: center; }
-        .header-icons { display: flex; gap: 8px; align-items: center; }
-        .icon-btn { background: rgba(255,255,255,0.2); border: none; color: white; width: 34px; height: 34px; border-radius: 50%; cursor: pointer; font-size: 16px; display: flex; align-items: center; justify-content: center; }
-        .icon-btn:hover { background: rgba(255,255,255,0.4); }
-
-        .search-box { padding: 10px 12px; border-bottom: 1px solid var(--border-color); }
-        .search-box input { padding: 8px 14px; border-radius: 20px; background: var(--chat-bg); color: var(--text-main); border: 1px solid var(--border-color); }
-        .users-list { flex: 1; overflow-y: auto; }
-        .user-item { display: flex; align-items: center; padding: 13px 16px; cursor: pointer; border-bottom: 1px solid var(--border-color); }
-        .user-item:hover, .user-item.active { background: rgba(102, 126, 234, 0.14); }
-        .public-room-item { background: rgba(56, 161, 105, 0.08); border-left: 4px solid #38a169; }
-        .avatar { width: 42px; height: 42px; border-radius: 50%; color: white; display: flex; align-items: center; justify-content: center; font-weight: bold; font-size: 16px; margin-right: 12px; flex-shrink: 0; object-fit: cover; }
-        .user-info { overflow: hidden; flex: 1; }
-        .user-name { font-weight: 600; font-size: 14px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-        .user-status { font-size: 11.5px; color: var(--text-muted); }
-        .call-icon-btn { background: #38a169; color: white; border: none; width: 30px; height: 30px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 13px; cursor: pointer; text-decoration: none; margin-left: 8px; }
-
-        .chat-main { flex: 1; display: flex; flex-direction: column; background: var(--chat-bg); }
-        .chat-header { padding: 15px 22px; background: var(--sidebar-bg); border-bottom: 1px solid var(--border-color); display: flex; justify-content: space-between; align-items: center; }
-        .header-actions { display: flex; gap: 10px; align-items: center; }
-        .video-call-btn { background: #3182ce; color: white; border: none; padding: 8px 12px; border-radius: 8px; cursor: pointer; font-size: 13px; font-weight: bold; display: flex; align-items: center; gap: 5px; }
-        .logout-btn { background: #ff4d4d; color: white; border: none; padding: 8px 14px; border-radius: 8px; cursor: pointer; font-weight: bold; font-size: 13px; }
-
-        .messages-box { flex: 1; padding: 20px; overflow-y: auto; display: flex; flex-direction: column; gap: 14px; }
-        .empty-state { margin: auto; text-align: center; color: var(--text-muted); }
-
-        .msg { position: relative; max-width: 76%; padding: 10px 14px; border-radius: 16px; font-size: var(--font-size); line-height: 1.4; word-wrap: break-word; box-shadow: 0 2px 5px rgba(0,0,0,0.06); }
-        .msg.sent { align-self: flex-end; background: var(--sent-bubble); color: white; border-bottom-right-radius: 4px; padding-right: 30px; }
-        .msg.received { align-self: flex-start; background: var(--received-bubble); color: var(--text-main); border-bottom-left-radius: 4px; border: 1px solid var(--border-color); padding-right: 30px; }
-        .sender-tag { display: block; font-size: 11px; font-weight: bold; margin-bottom: 4px; color: var(--primary-color); }
-        
-        .msg img { max-width: 260px; max-height: 260px; border-radius: 10px; display: block; margin-top: 5px; object-fit: cover; border: 1px solid rgba(0,0,0,0.1); }
-        .msg video { max-width: 280px; border-radius: 10px; display: block; margin-top: 5px; }
-        .msg audio { max-width: 240px; height: 36px; margin-top: 5px; }
-        
-        .file-box { background: rgba(0,0,0,0.12); padding: 10px 12px; border-radius: 10px; display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-top: 6px; }
-        .msg.received .file-box { background: rgba(102, 126, 234, 0.12); }
-
-        .msg-actions { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 8px; padding-top: 6px; border-top: 1px solid rgba(128,128,128,0.2); }
-        .msg-action-btn { background: rgba(0,0,0,0.18); color: inherit; border: none; padding: 4px 8px; border-radius: 6px; font-size: 11.5px; font-weight: 600; cursor: pointer; display: inline-flex; align-items: center; gap: 3px; transition: 0.15s; }
-        .msg.received .msg-action-btn { background: rgba(102, 126, 234, 0.14); color: var(--text-main); }
-        .msg-action-btn:hover { opacity: 0.85; transform: translateY(-1px); }
-        
-        .msg-action-btn.liked-active { background: #e53e3e !important; color: white !important; }
-        .msg-action-btn.dl-btn { background: #38a169; color: white !important; }
-        .msg-action-btn.fwd-btn { background: #3182ce; color: white !important; }
-
-        .comments-wrapper { margin-top: 8px; padding-top: 6px; border-top: 1px dashed rgba(128,128,128,0.3); font-size: 12.5px; }
-        .comment-item { background: rgba(0,0,0,0.14); padding: 5px 9px; border-radius: 8px; margin-bottom: 4px; display: flex; justify-content: space-between; align-items: center; gap: 6px; }
-        .msg.received .comment-item { background: rgba(0,0,0,0.05); }
-        .comment-author { font-weight: bold; font-size: 11px; margin-right: 5px; }
-        .del-comment-btn { background: none; border: none; color: inherit; opacity: 0.6; cursor: pointer; font-size: 11px; padding: 0 3px; }
-        .del-comment-btn:hover { opacity: 1; color: #ff4d4d; }
-
-        .comment-input-box { display: flex; gap: 5px; margin-top: 6px; }
-        .comment-input-box input { flex: 1; padding: 5px 10px; border-radius: 15px; border: 1px solid rgba(128,128,128,0.4); font-size: 12px; background: rgba(255,255,255,0.9); color: #2d3748; }
-        .comment-input-box button { background: #2d3748; color: white; border: none; border-radius: 15px; padding: 5px 10px; font-size: 11.5px; font-weight: bold; cursor: pointer; }
-
-        .msg-time { display: block; font-size: 10px; margin-top: 4px; opacity: 0.75; text-align: right; }
-        
-        .delete-msg-btn { position: absolute; top: 6px; right: 7px; background: rgba(0,0,0,0.35); color: white; border: none; border-radius: 50%; width: 20px; height: 20px; font-size: 11px; cursor: pointer; display: flex; align-items: center; justify-content: center; opacity: 0.75; z-index: 5; }
-        .delete-msg-btn:hover { opacity: 1; background: #e53e3e; }
-
-        .chat-input { padding: 12px 16px; background: var(--sidebar-bg); border-top: 1px solid var(--border-color); display: flex; align-items: center; gap: 8px; }
-        .media-btn { background: var(--chat-bg); border: 1px solid var(--border-color); color: var(--text-main); width: 40px; height: 40px; border-radius: 50%; cursor: pointer; font-size: 18px; display: flex; align-items: center; justify-content: center; }
-        .recording-active { background: #e53e3e !important; color: white !important; animation: pulse 1s infinite; }
-        @keyframes pulse { 0% { transform: scale(1); } 50% { transform: scale(1.1); } 100% { transform: scale(1); } }
-
-        .chat-input input[type="text"] { flex: 1; border-radius: 25px; padding: 11px 16px; background: var(--chat-bg); color: var(--text-main); border: 1px solid var(--border-color); font-size: var(--font-size); }
-        .send-btn { background: var(--primary-gradient); color: white; border: none; padding: 11px 20px; border-radius: 25px; font-weight: bold; cursor: pointer; }
-
-        #camera-modal, #video-call-modal, #settings-modal, #admin-modal, #forward-modal, #otp-modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.7); justify-content: center; align-items: center; z-index: 2000; }
-        .camera-box, .video-box, .settings-content, .admin-content, .forward-content, .otp-box { background: var(--sidebar-bg); padding: 25px; border-radius: 15px; text-align: center; color: var(--text-main); max-width: 500px; width: 90%; max-height: 90vh; overflow-y: auto; box-shadow: 0 10px 30px rgba(0,0,0,0.3); }
-        .camera-box video, .video-box video { width: 100%; border-radius: 10px; background: black; max-height: 350px; object-fit: cover; }
-        .camera-box canvas { display: none; }
-        .modal-btn-row { display: flex; gap: 10px; justify-content: center; margin-top: 15px; }
-
-        .settings-section, .admin-section { margin-bottom: 20px; border-bottom: 1px solid var(--border-color); padding-bottom: 15px; text-align: left; }
-        .settings-section h4, .admin-section h4 { margin: 0 0 10px 0; color: var(--primary-color); }
-        .theme-options { display: flex; gap: 10px; margin-top: 8px; }
-        .theme-btn { padding: 6px 12px; border: 1px solid var(--border-color); border-radius: 6px; cursor: pointer; background: var(--chat-bg); color: var(--text-main); font-size: 13px; }
-        .theme-btn.active { background: var(--primary-color); color: white; }
-
-        .admin-user-row, .forward-target-row { display: flex; justify-content: space-between; align-items: center; padding: 10px 12px; border-bottom: 1px solid var(--border-color); font-size: 14px; }
-        .forward-target-row:hover { background: rgba(102, 126, 234, 0.1); border-radius: 8px; }
-        .ban-btn { background: #ff4d4d; color: white; border: none; padding: 5px 10px; border-radius: 6px; cursor: pointer; font-size: 12px; }
-        .fwd-send-btn { background: #3182ce; color: white; border: none; padding: 6px 14px; border-radius: 6px; cursor: pointer; font-size: 12.5px; font-weight: bold; }
-
-        #toast-msg { visibility: hidden; min-width: 220px; background-color: #2d3748; color: #fff; text-align: center; border-radius: 25px; padding: 10px 20px; position: fixed; z-index: 3000; bottom: 30px; left: 50%; transform: translateX(-50%); font-size: 13.5px; box-shadow: 0 5px 15px rgba(0,0,0,0.3); }
-        #toast-msg.show { visibility: visible; animation: fadein 0.3s, fadeout 0.3s 2.2s; }
-        @keyframes fadein { from {bottom: 10px; opacity: 0;} to {bottom: 30px; opacity: 1;} }
-        @keyframes fadeout { from {bottom: 30px; opacity: 1;} to {bottom: 10px; opacity: 0;} }
-
-        @media (max-width: 720px) {
-            #chat-app { flex-direction: column; height: 96vh; }
-            .sidebar { width: 100%; height: 36%; border-bottom: 1px solid var(--border-color); }
-            .chat-main { height: 64%; }
+        button:hover { background-color: #006bce; }
+        .secondary-btn { background-color: #42b72a; }
+        .secondary-btn:hover { background-color: #36a420; }
+        .danger-btn { background-color: #dc3545; }
+        .hidden { display: none; }
+        .link {
+            text-align: center;
+            color: #0084ff;
+            cursor: pointer;
+            margin-top: 10px;
+            font-size: 14px;
         }
+        #chatBox {
+            height: 280px;
+            overflow-y: auto;
+            border: 1px solid #ddd;
+            padding: 10px;
+            border-radius: 5px;
+            background: #fafafa;
+            margin-bottom: 10px;
+        }
+        .msg {
+            background: #e4e6eb;
+            padding: 8px 12px;
+            border-radius: 12px;
+            margin-bottom: 8px;
+            font-size: 14px;
+        }
+        .msg.mine {
+            background: #0084ff;
+            color: white;
+            text-align: right;
+        }
+        .top-bar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+        }
+        .top-bar button { width: auto; padding: 6px 12px; margin: 0 2px; }
     </style>
 </head>
 <body>
 
-    <div id="toast-msg">Copied!</div>
+<div class="container">
+    <!-- 1. መግቢያ (LOGIN) -->
+    <div id="loginSection">
+        <h2>Mak Chat - ግባ</h2>
+        <input type="email" id="loginEmail" placeholder="ኢሜይል (ለምሳሌ፡ user@gmail.com)" required>
+        <input type="password" id="loginPassword" placeholder="ፓስወርድ" required>
+        <button onclick="login()">ግባ (Login)</button>
+        <div class="link" onclick="showSection('registerSection')">አካውንት የለዎትም? ይመዝገቡ</div>
+    </div>
 
-    <div class="auth-container" id="auth-container">
-        <div class="logo-badge">M</div>
-        <h2 id="form-title">Mak Chat - Login</h2>
-        <div class="form-group">
-            <label>Email Address (Gmail, Yahoo...)</label>
-            <input type="email" id="username" placeholder="name@gmail.com">
+    <!-- 2. መመዝገቢያ (REGISTER) -->
+    <div id="registerSection" class="hidden">
+        <h2>አዲስ አካውንት ይፍጠሩ</h2>
+        <input type="email" id="regEmail" placeholder="ኢሜይል (gmail.com, yahoo.com...)" required>
+        <input type="tel" id="regPhone" placeholder="ስልክ ቁጥር (ለምሳሌ፡ +251911223344)" required>
+        <input type="password" id="regPassword" placeholder="ፓስወርድ (ቢያንስ 6 ፊደል)" required>
+        <button class="secondary-btn" onclick="register()">ተመዝገብ (Register)</button>
+        <div class="link" onclick="showSection('loginSection')">አካውንት አለዎት? ይግቡ</div>
+    </div>
+
+    <!-- 3. የኦቲፒ ማረጋገጫ (OTP VERIFICATION) -->
+    <div id="otpSection" class="hidden">
+        <h2>ስልክ ቁጥርዎን ያረጋግጡ</h2>
+        <p style="font-size: 13px; color: #555; text-align: center;">በኤስኤምኤስ የተላከልዎትን ባለ 6 አሃዝ ኮድ ያስገቡ።</p>
+        <input type="text" id="otpCode" placeholder="የ6 አሃዝ OTP ኮድ" maxlength="6">
+        <button onclick="verifyOtp()">አረጋግጥ (Verify)</button>
+    </div>
+
+    <!-- 4. ዋናው የቻት ገጽ (CHAT ROOM) -->
+    <div id="chatSection" class="hidden">
+        <div class="top-bar">
+            <strong id="welcomeUser">Mak Chat</strong>
+            <div>
+                <button onclick="openSettings()">ሴቲንግ (Settings)</button>
+                <button class="danger-btn" onclick="logout()">ውጣ</button>
+            </div>
         </div>
-        <div class="form-group">
-            <label>Password</label>
-            <input type="password" id="password" placeholder="At least 6 characters">
-        </div>
-        <div class="form-group" id="phone-group" style="display: none;">
-            <label>Phone Number (Mandatory)</label>
-            <input type="tel" id="phone" placeholder="+251911223344">
-        </div>
-        <button class="btn-primary" id="auth-btn" onclick="handleAuth()">Login</button>
-        <div class="switch-text" id="switch-text">
-            Don't have an account? <span onclick="toggleMode()">Register</span>
+        <div id="chatBox"></div>
+        <div style="display: flex; gap: 5px;">
+            <input type="text" id="messageInput" placeholder="መልዕክት ይጻፉ..." onkeypress="if(event.key==='Enter') sendMessage()">
+            <button style="width: 80px;" onclick="sendMessage()">ላክ</button>
         </div>
     </div>
 
-    <!-- OTP Verification Modal -->
-    <div id="otp-modal">
-        <div class="otp-box">
-            <h3>📱 Verify Phone Number</h3>
-            <p style="font-size: 13px; color: var(--text-muted); margin-bottom: 15px;">የማረጋገጫ ኮድ (OTP) ወደ ስልክ ቁጥርዎ ተልኳል። እባክዎ ኮዱን እዚህ ያስገቡ፡</p>
-            <div class="form-group">
-                <input type="text" id="otp-input" placeholder="Enter 6-digit Code" style="text-align: center; font-size: 18px; letter-spacing: 2px;">
-            </div>
-            <div class="modal-btn-row">
-                <button class="btn-primary" onclick="verifyOtpCode()" style="background: #38a169;">Verify & Complete</button>
-                <button class="btn-primary" onclick="closeOtpModal()" style="background: #e53e3e;">Cancel</button>
-            </div>
-        </div>
+    <!-- 5. ሴቲንግ (SETTINGS - ስልክ ቁጥር መቀየር አይቻልም) -->
+    <div id="settingsSection" class="hidden">
+        <h3>ፕሮፋይል ሴቲንግ</h3>
+        <label style="font-size: 12px; color: #666;">ኢሜይል (መቀየር አይቻልም):</label>
+        <input type="text" id="setEmail" disabled>
+
+        <label style="font-size: 12px; color: #666;">ስልክ ቁጥር (ቋሚ - መቀየር አይቻልም):</label>
+        <input type="text" id="setPhone" disabled>
+
+        <label style="font-size: 12px; color: #666;">አዲስ ፓስወርድ (መቀየር ከፈለጉ ብቻ ይሙሉ):</label>
+        <input type="password" id="setNewPassword" placeholder="አዲስ ፓስወርድ">
+
+        <button class="secondary-btn" onclick="updateProfile()">ለውጦችን አስቀምጥ (Save)</button>
+        <button onclick="showSection('chatSection')" style="background: #6c757d;">ወደ ቻት ተመለስ</button>
     </div>
+</div>
 
-    <div id="chat-app">
-        <div class="sidebar">
-            <div class="sidebar-header">
-                <div>
-                    <strong style="font-size: 17px;" id="my-display-email">Mak Chat 💬</strong>
-                    <div style="font-size: 11px; opacity: 0.9;" id="my-phone-display"></div>
-                </div>
-                <div class="header-icons">
-                    <button class="icon-btn" id="admin-panel-btn" onclick="openAdminModal()" title="Admin Panel" style="display: none;">🛡️</button>
-                    <button class="icon-btn" onclick="openSettingsModal()" title="Settings">⚙️</button>
-                </div>
-            </div>
-            <div class="search-box">
-                <input type="text" id="search-user" placeholder="🔍 Search user..." onkeyup="filterUsers()">
-            </div>
-            <div class="users-list" id="users-list"></div>
-        </div>
+<script>
+    let currentUser = null;
+    let pendingEmail = '';
+    let chatInterval = null;
 
-        <div class="chat-main">
-            <div class="chat-header">
-                <div style="display: flex; align-items: center;">
-                    <img id="chat-with-avatar" class="avatar" style="display: none;" src="" alt="">
-                    <div id="chat-with-initial" class="avatar" style="background: #38a169;">🌍</div>
-                    <div style="margin-left: 10px;">
-                        <strong id="chat-with-name" style="font-size: 16px;">Public Chat</strong>
-                        <div id="chat-with-sub" style="font-size: 12px; color: var(--text-muted);">Global chat room for everyone</div>
-                    </div>
-                </div>
-                <div class="header-actions">
-                    <button class="video-call-btn" onclick="startVideoCall()" title="Start Video Chat">📹 Video Chat</button>
-                    <button class="logout-btn" onclick="logout()">Logout</button>
-                </div>
-            </div>
+    function showSection(sectionId) {
+        ['loginSection', 'registerSection', 'otpSection', 'chatSection', 'settingsSection'].forEach(id => {
+            document.getElementById(id).classList.add('hidden');
+        });
+        document.getElementById(sectionId).classList.remove('hidden');
+    }
 
-            <div class="messages-box" id="messages-container"></div>
+    // 1. መመዝገብ (Register)
+    async function register() {
+        const username = document.getElementById('regEmail').value.trim();
+        const phone = document.getElementById('regPhone').value.trim();
+        const password = document.getElementById('regPassword').value;
 
-            <input type="file" id="media-file-input" style="display: none;" onchange="handleFileUpload(event)">
+        const res = await fetch('/register', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ username, phone, password })
+        });
+        const data = await res.json();
 
-            <div class="chat-input" id="input-area">
-                <button class="media-btn" title="Attach file" onclick="document.getElementById('media-file-input').click()">📎</button>
-                <button class="media-btn" title="Open Camera & Take Photo" onclick="openCameraModal()">📷</button>
-                <button class="media-btn" id="mic-btn" title="Record Voice Note" onclick="toggleVoiceRecording()">🎤</button>
-                <input type="text" id="message-input" placeholder="Type a message..." onkeypress="handleEnter(event)">
-                <button class="send-btn" onclick="sendTextMessage()">Send ➤</button>
-            </div>
-        </div>
-    </div>
-
-    <!-- Forward Message Modal -->
-    <div id="forward-modal">
-        <div class="forward-content">
-            <h3>↪️ Forward Message To...</h3>
-            <p style="font-size: 13px; color: var(--text-muted); margin-bottom: 12px;">Select a chat room or user to forward this item:</p>
-            <div id="forward-targets-list" style="max-height: 280px; overflow-y: auto; text-align: left; border-top: 1px solid var(--border-color); margin-bottom: 15px;"></div>
-            <button onclick="closeForwardModal()" class="btn-primary" style="background: #718096;">Cancel</button>
-        </div>
-    </div>
-
-    <!-- Admin Panel Modal -->
-    <div id="admin-modal">
-        <div class="admin-content">
-            <h3>🛡️ Admin Dashboard</h3>
-            <div class="admin-section">
-                <h4>Manage Users</h4>
-                <div id="admin-users-list" style="max-height: 250px; overflow-y: auto;"></div>
-            </div>
-            <button onclick="closeAdminModal()" class="btn-primary" style="background: #718096;">Close</button>
-        </div>
-    </div>
-
-    <!-- Camera Modal -->
-    <div id="camera-modal">
-        <div class="camera-box">
-            <h3>📷 Take a Photo</h3>
-            <video id="camera-stream" autoplay playsinline></video>
-            <canvas id="camera-canvas"></canvas>
-            <div class="modal-btn-row">
-                <button class="btn-primary" id="capture-btn" onclick="capturePhoto()" style="background: #38a169;" disabled>Loading Camera...</button>
-                <button class="btn-primary" onclick="closeCameraModal()" style="background: #e53e3e;">Cancel</button>
-            </div>
-        </div>
-    </div>
-
-    <!-- Video Chat Modal -->
-    <div id="video-call-modal">
-        <div class="video-box">
-            <h3>📹 Live Video Chat</h3>
-            <video id="local-video" autoplay muted playsinline></video>
-            <div class="modal-btn-row">
-                <button class="btn-primary" onclick="endVideoCall()" style="background: #e53e3e;">End Call</button>
-            </div>
-        </div>
-    </div>
-
-    <!-- Settings Modal -->
-    <div id="settings-modal">
-        <div class="settings-content">
-            <h3>⚙️ Settings Center</h3>
-            <div class="settings-section">
-                <h4>👤 Profile Management</h4>
-                <div class="form-group">
-                    <label>Change Profile Picture</label>
-                    <input type="file" id="settings-pic-input" accept="image/*" onchange="previewProfilePic(event)">
-                </div>
-                <div class="form-group">
-                    <label>Phone Number</label>
-                    <input type="tel" id="settings-phone">
-                </div>
-                <div class="form-group">
-                    <label>New Password (Optional)</label>
-                    <input type="password" id="settings-new-password" placeholder="Leave blank to keep current">
-                </div>
-                <button class="btn-primary" onclick="saveProfileSettings()">Save Changes</button>
-            </div>
-
-            <div class="settings-section">
-                <h4>🎨 Theme & Appearance</h4>
-                <div class="theme-options">
-                    <button class="theme-btn" onclick="setTheme('default')">Default</button>
-                    <button class="theme-btn" onclick="setTheme('ocean')">Ocean</button>
-                    <button class="theme-btn" onclick="setTheme('emerald')">Emerald</button>
-                    <button class="theme-btn" onclick="setTheme('sunset')">Sunset</button>
-                    <button class="theme-btn" onclick="setTheme('dark')">Dark</button>
-                </div>
-                <label style="margin-top: 10px;">Font Size</label>
-                <select id="font-size-select" style="width:100%; padding:8px; border-radius:8px;" onchange="changeFontSize(this.value)">
-                    <option value="13px">Small</option>
-                    <option value="14.5px" selected>Medium</option>
-                    <option value="17px">Large</option>
-                </select>
-            </div>
-
-            <div class="settings-section">
-                <h4>🔔 Notifications & Sound</h4>
-                <label><input type="checkbox" id="sound-toggle" checked> Enable Notification Sound</label>
-            </div>
-
-            <div class="settings-section">
-                <h4>🔒 Privacy & Account</h4>
-                <button onclick="deleteAccount()" style="background:#ff4d4d; color:white; border:none; padding:10px; border-radius:8px; width:100%; cursor:pointer; font-weight:bold;">⚠️ Delete Account</button>
-            </div>
-            <button onclick="closeSettingsModal()" style="width:100%; padding:10px; background:#718096; color:white; border:none; border-radius:8px; cursor:pointer;">Close</button>
-        </div>
-    </div>
-
-    <script>
-        let isLoginMode = true;
-        let loggedInUser = localStorage.getItem('chat_user') || null;
-        let loggedInPhone = localStorage.getItem('chat_phone') || '';
-        let loggedInPic = localStorage.getItem('chat_pic') || '';
-        let loggedInRole = localStorage.getItem('chat_role') || 'user';
-        let selectedChat = 'PUBLIC_ROOM';
-        let allUsers = [];
-        let messageInterval = null;
-        let lastMessageSnapshot = '';
-        let messageCache = {};
-        let openCommentBoxes = {}; 
-        let messageToForward = null;
-        let pendingRegisterUsername = ''; // To track username during OTP verification
-
-        let mediaRecorder = null;
-        let audioChunks = [];
-        let isRecording = false;
-        let tempNewPic = '';
-        let cameraStreamObj = null;
-        let videoCallStreamObj = null;
-
-        const allowedDomains = ['gmail.com', 'yahoo.com', 'outlook.com', 'hotmail.com', 'icloud.com', 'live.com', 'aol.com', 'protonmail.com', 'yandex.com', 'zoho.com', 'edu.et', 'gov.et'];
-
-        function showToast(text) {
-            const toast = document.getElementById('toast-msg');
-            toast.innerText = text;
-            toast.className = 'show';
-            setTimeout(() => { toast.className = toast.className.replace('show', ''); }, 2500);
+        if (res.ok) {
+            alert(data.message);
+            pendingEmail = username;
+            showSection('otpSection');
+        } else {
+            alert(data.error);
         }
+    }
 
-        function isRealEmail(email) {
-            const emailRegex = /^[a-zA-Z0-9._%+-]+@([a-zA-Z0-9.-]+\.[a-zA-Z]{2,})$/;
-            const match = email.toLowerCase().match(emailRegex);
-            if (!match) return false;
-            return allowedDomains.includes(match[1]) || match[1].endsWith('.edu') || match[1].endsWith('.gov');
+    // 2. OTP ማረጋገጥ
+    async function verifyOtp() {
+        const otp = document.getElementById('otpCode').value.trim();
+
+        const res = await fetch('/verify-otp', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ username: pendingEmail, otp })
+        });
+        const data = await res.json();
+
+        if (res.ok) {
+            alert(data.message);
+            showSection('loginSection');
+        } else {
+            alert(data.error);
         }
+    }
 
-        function setTheme(theme) {
-            if (theme === 'default') document.documentElement.removeAttribute('data-theme');
-            else document.documentElement.setAttribute('data-theme', theme);
-            localStorage.setItem('chat_theme', theme);
-        }
+    // 3. መግባት (Login)
+    async function login() {
+        const username = document.getElementById('loginEmail').value.trim();
+        const password = document.getElementById('loginPassword').value;
 
-        function changeFontSize(size) {
-            document.documentElement.style.setProperty('--font-size', size);
-            localStorage.setItem('chat_fontsize', size);
-        }
+        const res = await fetch('/login', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ username, password })
+        });
+        const data = await res.json();
 
-        window.onload = () => {
-            const savedTheme = localStorage.getItem('chat_theme');
-            if (savedTheme) setTheme(savedTheme);
-            const savedFont = localStorage.getItem('chat_fontsize');
-            if (savedFont) {
-                document.documentElement.style.setProperty('--font-size', savedFont);
-                document.getElementById('font-size-select').value = savedFont;
-            }
-            if (loggedInUser) showChatApp();
-        };
-
-        function toggleMode() {
-            isLoginMode = !isLoginMode;
-            document.getElementById('form-title').innerText = isLoginMode ? "Mak Chat - Login" : "Mak Chat - Register";
-            document.getElementById('auth-btn').innerText = isLoginMode ? "Login" : "Register";
-            document.getElementById('phone-group').style.display = isLoginMode ? 'none' : 'block';
-            document.getElementById('switch-text').innerHTML = isLoginMode ? 'Don\'t have an account? <span onclick="toggleMode()">Register</span>' : 'Already have an account? <span onclick="toggleMode()">Login</span>';
-        }
-
-        async function handleAuth() {
-            const username = document.getElementById('username').value.trim().toLowerCase();
-            const password = document.getElementById('password').value.trim();
-            const phone = document.getElementById('phone') ? document.getElementById('phone').value.trim() : '';
-
-            if (!username || !password) { alert('Please fill in email and password!'); return; }
-            if (!isRealEmail(username)) { alert('Please use a valid email address (e.g. @gmail.com)!'); return; }
-            
-            if (!isLoginMode && !phone) {
-                alert('ስልክ ቁጥር ማስገባት ግዴታ ነው (Phone number is mandatory)!');
-                return;
-            }
-
-            const endpoint = isLoginMode ? '/login' : '/register';
-            try {
-                const response = await fetch(endpoint, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ username, password, phone })
-                });
-                const data = await response.json();
-                if (response.ok) {
-                    if (isLoginMode) {
-                        loggedInUser = data.username;
-                        loggedInPhone = data.phone || '';
-                        loggedInPic = data.profile_pic || '';
-                        loggedInRole = data.role || 'user';
-                        localStorage.setItem('chat_user', loggedInUser);
-                        localStorage.setItem('chat_phone', loggedInPhone);
-                        localStorage.setItem('chat_pic', loggedInPic);
-                        localStorage.setItem('chat_role', loggedInRole);
-                        showChatApp();
-                    } else {
-                        // Registration successful, now show OTP verification modal
-                        pendingRegisterUsername = username;
-                        document.getElementById('otp-modal').style.display = 'flex';
-                        alert(data.message); // Displays simulated SMS code info
-                    }
-                } else { alert(data.error); }
-            } catch (err) { alert('Failed to connect to server!'); }
-        }
-
-        async function verifyOtpCode() {
-            const otpCode = document.getElementById('otp-input').value.trim();
-            if (!otpCode) { alert('እባክዎ የተላከውን ኮድ ያስገቡ!'); return; }
-
-            try {
-                const response = await fetch('/verify-otp', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ username: pendingRegisterUsername, otp: otpCode })
-                });
-                const data = await response.json();
-                if (response.ok) {
-                    alert('ሪጅስትሬሽኑ በተሳካ ሁኔታ አፕሩቭ ሆኗል! (Registration Approved)');
-                    closeOtpModal();
-                    toggleMode(); // Switch back to login
-                } else {
-                    alert(data.error);
-                }
-            } catch (err) {
-                alert('ኮዱን ማረጋገጥ አልተቻለም!');
-            }
-        }
-
-        function closeOtpModal() {
-            document.getElementById('otp-modal').style.display = 'none';
-            document.getElementById('otp-input').value = '';
-            pendingRegisterUsername = '';
-        }
-
-        function showChatApp() {
-            document.getElementById('auth-container').style.display = 'none';
-            document.getElementById('chat-app').style.display = 'flex';
-            document.getElementById('my-display-email').innerText = loggedInUser + (loggedInRole === 'admin' ? ' (Admin)' : '');
-            document.getElementById('my-phone-display').innerText = loggedInPhone ? '📞 ' + loggedInPhone : '';
-            
-            if (loggedInRole === 'admin') {
-                document.getElementById('admin-panel-btn').style.display = 'flex';
-            }
-
-            loadUsers();
-            selectChat('PUBLIC_ROOM');
-            setInterval(loadUsers, 5000);
-        }
-
-        async function loadUsers() {
-            try {
-                const response = await fetch(`/users?currentUser=${encodeURIComponent(loggedInUser)}`);
-                allUsers = await response.json();
-                renderUsers(allUsers);
-            } catch (err) {}
-        }
-
-        function renderUsers(users) {
-            const list = document.getElementById('users-list');
-            const searchTerm = document.getElementById('search-user').value.toLowerCase();
-            list.innerHTML = '';
-
-            const publicDiv = document.createElement('div');
-            publicDiv.className = 'user-item public-room-item' + (selectedChat === 'PUBLIC_ROOM' ? ' active' : '');
-            publicDiv.onclick = () => selectChat('PUBLIC_ROOM');
-            publicDiv.innerHTML = `<div class="avatar" style="background: #38a169;">🌍</div><div class="user-info"><div class="user-name">Public Chat</div><div class="user-status">Global room</div></div>`;
-            list.appendChild(publicDiv);
-
-            users.filter(u => u.username.toLowerCase().includes(searchTerm)).forEach(user => {
-                const div = document.createElement('div');
-                div.className = 'user-item' + (selectedChat === user.username ? ' active' : '');
-                let avatarHTML = user.profile_pic ? `<img src="${user.profile_pic}" class="avatar">` : `<div class="avatar" style="background: #667eea;">${user.username.charAt(0).toUpperCase()}</div>`;
-                let callBtn = user.phone ? `<a href="tel:${user.phone}" class="call-icon-btn" title="Call" onclick="event.stopPropagation()">📞</a>` : '';
-                let adminBadge = user.role === 'admin' ? ' 🛡️' : '';
-
-                div.innerHTML = `${avatarHTML}<div class="user-info" onclick="selectChat('${user.username}')"><div class="user-name">${user.username}${adminBadge}</div><div class="user-status">${user.phone || 'Private Chat'}</div></div>${callBtn}`;
-                list.appendChild(div);
-            });
-        }
-
-        function filterUsers() { renderUsers(allUsers); }
-
-        function selectChat(target) {
-            selectedChat = target;
-            lastMessageSnapshot = '';
-            renderUsers(allUsers);
-
-            const avatarImg = document.getElementById('chat-with-avatar');
-            const avatarInit = document.getElementById('chat-with-initial');
-
-            if (target === 'PUBLIC_ROOM') {
-                avatarImg.style.display = 'none';
-                avatarInit.style.display = 'flex';
-                avatarInit.innerText = '🌍';
-                document.getElementById('chat-with-name').innerText = 'Public Chat';
-                document.getElementById('chat-with-sub').innerText = 'Global chat room for everyone';
-            } else {
-                const foundUser = allUsers.find(u => u.username === target);
-                if (foundUser && foundUser.profile_pic) {
-                    avatarImg.src = foundUser.profile_pic;
-                    avatarImg.style.display = 'flex';
-                    avatarInit.style.display = 'none';
-                } else {
-                    avatarImg.style.display = 'none';
-                    avatarInit.style.display = 'flex';
-                    avatarInit.innerText = target.charAt(0).toUpperCase();
-                }
-                document.getElementById('chat-with-name').innerText = target;
-                document.getElementById('chat-with-sub').innerHTML = `🔒 Private 1-on-1 Chat ${foundUser?.phone ? '| ' + foundUser.phone : ''}`;
-            }
+        if (res.ok) {
+            currentUser = data;
+            document.getElementById('welcomeUser').innerText = data.username.split('@')[0];
+            showSection('chatSection');
             loadMessages();
-            if (messageInterval) clearInterval(messageInterval);
-            messageInterval = setInterval(loadMessages, 1500);
+            chatInterval = setInterval(loadMessages, 3000); // በየ 3 ሰከንዱ አዲስ መልዕክት ያመጣል
+        } else {
+            alert(data.error);
         }
+    }
 
-        async function toggleLike(msgId) {
-            await fetch('/messages/like', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ messageId: msgId, username: loggedInUser })
-            });
-            lastMessageSnapshot = '';
-            loadMessages();
+    // 4. መልዕክት መላክ እና ማምጣት (Public Room)
+    async function sendMessage() {
+        const input = document.getElementById('messageInput');
+        const message = input.value.trim();
+        if (!message) return;
+
+        await fetch('/messages', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                sender: currentUser.username,
+                receiver: 'PUBLIC_ROOM',
+                message: message
+            })
+        });
+        input.value = '';
+        loadMessages();
+    }
+
+    async function loadMessages() {
+        if (!currentUser) return;
+        const res = await fetch(`/messages?user1=${currentUser.username}&user2=PUBLIC_ROOM`);
+        const messages = await res.json();
+        const chatBox = document.getElementById('chatBox');
+        
+        chatBox.innerHTML = messages.map(m => {
+            const isMine = m.sender === currentUser.username;
+            return `<div class="msg ${isMine ? 'mine' : ''}">
+                        <small style="display:block; font-size:10px; opacity:0.8;">${m.sender}</small>
+                        ${m.message}
+                    </div>`;
+        }).join('');
+        chatBox.scrollTop = chatBox.scrollHeight;
+    }
+
+    // 5. ሴቲንግ (Settings)
+    function openSettings() {
+        document.getElementById('setEmail').value = currentUser.username;
+        document.getElementById('setPhone').value = currentUser.phone; // ቋሚ ሆኖ ይታያል (Disabled)
+        document.getElementById('setNewPassword').value = '';
+        showSection('settingsSection');
+    }
+
+    async function updateProfile() {
+        const newPassword = document.getElementById('setNewPassword').value;
+
+        const res = await fetch('/update-profile', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                username: currentUser.username,
+                profile_pic: currentUser.profile_pic || '',
+                newPassword: newPassword
+            })
+        });
+        const data = await res.json();
+
+        if (res.ok) {
+            alert('መረጃዎ በተሳካ ሁኔታ ተዘምኗል!');
+            showSection('chatSection');
+        } else {
+            alert(data.error);
         }
+    }
 
-        function toggleCommentBox(msgId) {
-            openCommentBoxes[msgId] = !openCommentBoxes[msgId];
-            lastMessageSnapshot = '';
-            loadMessages();
-        }
+    function logout() {
+        currentUser = null;
+        clearInterval(chatInterval);
+        showSection('loginSection');
+    }
+</script>
 
-        async function submitComment(msgId) {
-            const input = document.getElementById(`comment-input-${msgId}`);
-            if (!input) return;
-            const commentText = input.value.trim();
-            if (!commentText) return;
-
-            input.value = '';
-            await fetch('/messages/comment', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ messageId: msgId, username: loggedInUser, commentText })
-            });
-            openCommentBoxes[msgId] = true;
-            lastMessageSnapshot = '';
-            loadMessages();
-        }
-
-        async function deleteComment(commentId) {
-            if (!confirm('Delete this comment?')) return;
-            await fetch('/messages/delete-comment', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ username: loggedInUser, commentId })
-            });
-            lastMessageSnapshot = '';
-            loadMessages();
-        }
-
-        async function copyMessageItem(msgId) {
-            const msg = messageCache[msgId];
-            if (!msg) return;
-
-            try {
-                if (msg.media_type === 'image' && msg.media_data && navigator.clipboard && window.ClipboardItem) {
-                    const res = await fetch(msg.media_data);
-                    const blob = await res.blob();
-                    if (blob.type === 'image/png') {
-                        await navigator.clipboard.write([new ClipboardItem({ 'image/png': blob })]);
-                        showToast('📋 Image copied to clipboard!');
-                        return;
-                    }
-                }
-            } catch (err) {}
-
-            const textToCopy = msg.message || msg.file_name || `[${msg.media_type.toUpperCase()} Attachment]`;
-            if (navigator.clipboard && navigator.clipboard.writeText) {
-                await navigator.clipboard.writeText(textToCopy);
-                showToast('📋 Copied to clipboard!');
-            } else {
-                const tempInput = document.createElement('textarea');
-                tempInput.value = textToCopy;
-                document.body.appendChild(tempInput);
-                tempInput.select();
-                document.execCommand('copy');
-                document.body.removeChild(tempInput);
-                showToast('📋 Copied to clipboard!');
-            }
-        }
-
-        function downloadMediaFile(msgId) {
-            const msg = messageCache[msgId];
-            if (!msg || !msg.media_data) {
-                alert('File data not available.');
-                return;
-            }
-            const defaultFileName = msg.file_name || `mak_chat_${msg.media_type}_${msg.id}`;
-            try {
-                const parts = msg.media_data.split(',');
-                const mimeMatch = parts[0].match(/:(.*?);/);
-                const mime = mimeMatch ? mimeMatch[1] : 'application/octet-stream';
-                const byteCharacters = atob(parts[1]);
-                const byteNumbers = new Array(byteCharacters.length);
-                for (let i = 0; i < byteCharacters.length; i++) {
-                    byteNumbers[i] = byteCharacters.charCodeAt(i);
-                }
-                const byteArray = new Uint8Array(byteNumbers);
-                const blob = new Blob([byteArray], { type: mime });
-                const blobUrl = URL.createObjectURL(blob);
-
-                const link = document.createElement('a');
-                link.href = blobUrl;
-                link.download = defaultFileName;
-                document.body.appendChild(link);
-                link.click();
-                document.body.removeChild(link);
-                setTimeout(() => URL.revokeObjectURL(blobUrl), 5000);
-                showToast('⬇️ Downloading...');
-            } catch (e) {
-                const link = document.createElement('a');
-                link.href = msg.media_data;
-                link.download = defaultFileName;
-                link.click();
-            }
-        }
-
-        function openForwardModal(msgId) {
-            const msg = messageCache[msgId];
-            if (!msg) return;
-            messageToForward = msg;
-
-            const listContainer = document.getElementById('forward-targets-list');
-            listContainer.innerHTML = '';
-
-            const pubRow = document.createElement('div');
-            pubRow.className = 'forward-target-row';
-            pubRow.innerHTML = `<span>🌍 <strong>Public Chat</strong></span> <button class="fwd-send-btn" onclick="executeForward('PUBLIC_ROOM')">Forward ➤</button>`;
-            listContainer.appendChild(pubRow);
-
-            allUsers.forEach(u => {
-                const row = document.createElement('div');
-                row.className = 'forward-target-row';
-                row.innerHTML = `<span>👤 ${u.username}</span> <button class="fwd-send-btn" onclick="executeForward('${u.username}')">Forward ➤</button>`;
-                listContainer.appendChild(row);
-            });
-
-            document.getElementById('forward-modal').style.display = 'flex';
-        }
-
-        function closeForwardModal() {
-            document.getElementById('forward-modal').style.display = 'none';
-            messageToForward = null;
-        }
-
-        async function executeForward(targetReceiver) {
-            if (!messageToForward) return;
-            const forwardedText = messageToForward.message 
-                ? `↪️ Forwarded: ${messageToForward.message}` 
-                : `↪️ Forwarded ${messageToForward.media_type}`;
-
-            await sendPayload({
-                sender: loggedInUser,
-                receiver: targetReceiver,
-                message: forwardedText,
-                media_type: messageToForward.media_type,
-                media_data: messageToForward.media_data,
-                file_name: messageToForward.file_name
-            });
-
-            closeForwardModal();
-            showToast(`↪️ Forwarded to ${targetReceiver === 'PUBLIC_ROOM' ? 'Public Chat' : targetReceiver}`);
-        }
-
-        async function loadMessages() {
-            if (!selectedChat) return;
-            if (document.activeElement && document.activeElement.id && document.activeElement.id.startsWith('comment-input-')) {
-                return;
-            }
-
-            try {
-                const response = await fetch(`/messages?user1=${encodeURIComponent(loggedInUser)}&user2=${encodeURIComponent(selectedChat)}`);
-                const messages = await response.json();
-                
-                const currentSnapshot = messages.map(m => `${m.id}:${(m.likes||[]).length}:${(m.comments||[]).length}:${openCommentBoxes[m.id]?1:0}`).join('|');
-                if (currentSnapshot === lastMessageSnapshot && messages.length > 0) return;
-                lastMessageSnapshot = currentSnapshot;
-
-                const container = document.getElementById('messages-container');
-                container.innerHTML = '';
-                if (messages.length === 0) {
-                    container.innerHTML = `<div class="empty-state"><p>No messages yet. Send a message or photo! 👋</p></div>`;
-                    return;
-                }
-
-                messages.forEach(msg => {
-                    messageCache[msg.id] = msg;
-
-                    const div = document.createElement('div');
-                    const isMine = msg.sender === loggedInUser;
-                    div.className = 'msg ' + (isMine ? 'sent' : 'received');
-
-                    let senderHeader = (!isMine && selectedChat === 'PUBLIC_ROOM') ? `<span class="sender-tag">${msg.sender}</span>` : '';
-                    let media = '';
-
-                    if (msg.media_type === 'image') {
-                        media = `<img src="${msg.media_data}" alt="Photo">`;
-                    } else if (msg.media_type === 'video') {
-                        media = `<video controls src="${msg.media_data}"></video>`;
-                    } else if (msg.media_type === 'audio') {
-                        media = `<audio controls src="${msg.media_data}"></audio>`;
-                    } else if (msg.media_type === 'file') {
-                        media = `<div class="file-box"><span>📁 <strong>${msg.file_name || 'Document'}</strong></span></div>`;
-                    }
-
-                    const text = msg.message ? `<div>${msg.message}</div>` : '';
-                    const time = msg.timestamp ? new Date(msg.timestamp).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}) : '';
-                    
-                    let canDelete = isMine || (loggedInRole === 'admin');
-                    let deleteBtn = canDelete ? `<button class="delete-msg-btn" onclick="deleteMessage(${msg.id})" title="Delete Message">✕</button>` : '';
-
-                    const likesList = msg.likes || [];
-                    const iLiked = likesList.includes(loggedInUser);
-                    const likeCountText = likesList.length > 0 ? ` ${likesList.length}` : '';
-                    const likeBtnTitle = likesList.length > 0 ? `Liked by: ${likesList.join(', ')}` : 'Like';
-
-                    const commentsList = msg.comments || [];
-                    const commentCountText = commentsList.length > 0 ? ` (${commentsList.length})` : '';
-
-                    let downloadButtonHTML = msg.media_data 
-                        ? `<button class="msg-action-btn dl-btn" onclick="downloadMediaFile(${msg.id})" title="Download">⬇️ Download</button>` 
-                        : '';
-
-                    let actionBar = `
-                        <div class="msg-actions">
-                            <button class="msg-action-btn ${iLiked ? 'liked-active' : ''}" onclick="toggleLike(${msg.id})" title="${likeBtnTitle}">👍 Like${likeCountText}</button>
-                            <button class="msg-action-btn" onclick="toggleCommentBox(${msg.id})" title="View or Write Comments">💬 Comment${commentCountText}</button>
-                            <button class="msg-action-btn" onclick="copyMessageItem(${msg.id})" title="Copy">📋 Copy</button>
-                            ${downloadButtonHTML}
-                            <button class="msg-action-btn fwd-btn" onclick="openForwardModal(${msg.id})" title="Forward">↪️ Forward</button>
-                        </div>
-                    `;
-
-                    let commentsHTML = '';
-                    if (commentsList.length > 0 || openCommentBoxes[msg.id]) {
-                        let itemsHTML = commentsList.map(c => {
-                            const canDelComment = (c.username === loggedInUser) || (loggedInRole === 'admin');
-                            const delCBtn = canDelComment ? `<button class="del-comment-btn" onclick="deleteComment(${c.id})" title="Delete comment">✕</button>` : '';
-                            return `<div class="comment-item"><div><span class="comment-author">${c.username.split('@')[0]}:</span><span>${c.comment_text}</span></div>${delCBtn}</div>`;
-                        }).join('');
-
-                        let inputHTML = openCommentBoxes[msg.id] ? `
-                            <div class="comment-input-box">
-                                <input type="text" id="comment-input-${msg.id}" placeholder="Write a comment..." onkeypress="if(event.key==='Enter') submitComment(${msg.id})">
-                                <button onclick="submitComment(${msg.id})">Post</button>
-                            </div>
-                        ` : '';
-
-                        commentsHTML = `<div class="comments-wrapper">${itemsHTML}${inputHTML}</div>`;
-                    }
-
-                    div.innerHTML = `${deleteBtn}${senderHeader}${text}${media}${actionBar}${commentsHTML}<span class="msg-time">${time}</span>`;
-                    container.appendChild(div);
-                });
-                container.scrollTop = container.scrollHeight;
-            } catch (err) {}
-        }
-
-        async function sendTextMessage() {
-            const input = document.getElementById('message-input');
-            const message = input.value.trim();
-            if (!message || !selectedChat) return;
-            input.value = '';
-            await sendPayload({ sender: loggedInUser, receiver: selectedChat, message, media_type: 'text' });
-        }
-
-        async function deleteMessage(messageId) {
-            if (confirm('Are you sure you want to delete this message?')) {
-                const res = await fetch('/delete-message', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ username: loggedInUser, messageId })
-                });
-                if (res.ok) {
-                    lastMessageSnapshot = '';
-                    loadMessages();
-                } else {
-                    alert('Failed to delete message');
-                }
-            }
-        }
-
-        function openAdminModal() {
-            const listContainer = document.getElementById('admin-users-list');
-            listContainer.innerHTML = '';
-            allUsers.forEach(u => {
-                const row = document.createElement('div');
-                row.className = 'admin-user-row';
-                row.innerHTML = `<span>${u.username} ${u.role === 'admin' ? '(Admin)' : ''}</span> <button class="ban-btn" onclick="adminDeleteUser('${u.username}')">Remove User</button>`;
-                listContainer.appendChild(row);
-            });
-            document.getElementById('admin-modal').style.display = 'flex';
-        }
-        function closeAdminModal() { document.getElementById('admin-modal').style.display = 'none'; }
-
-        async function adminDeleteUser(targetUser) {
-            if (confirm(`Are you sure you want to remove ${targetUser}?`)) {
-                const res = await fetch('/admin/delete-user', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ adminUser: loggedInUser, targetUser })
-                });
-                if (res.ok) {
-                    alert('User removed successfully');
-                    loadUsers();
-                    openAdminModal();
-                } else { alert('Failed to remove user'); }
-            }
-        }
-
-        async function openCameraModal() {
-            const modal = document.getElementById('camera-modal');
-            const videoElem = document.getElementById('camera-stream');
-            const captureBtn = document.getElementById('capture-btn');
-            
-            captureBtn.disabled = true;
-            captureBtn.innerText = 'Loading Camera...';
-            modal.style.display = 'flex';
-
-            try {
-                cameraStreamObj = await navigator.mediaDevices.getUserMedia({ 
-                    video: { facingMode: 'user', width: { ideal: 1280 }, height: { ideal: 720 } }, 
-                    audio: false 
-                });
-                videoElem.srcObject = cameraStreamObj;
-
-                videoElem.onloadedmetadata = async () => {
-                    try {
-                        await videoElem.play();
-                        captureBtn.disabled = false;
-                        captureBtn.innerText = '📸 Capture & Send';
-                    } catch (e) {}
-                };
-            } catch (err) { 
-                alert('Camera access denied or no camera found.'); 
-                modal.style.display = 'none'; 
-            }
-        }
-
-        function closeCameraModal() {
-            if (cameraStreamObj) {
-                cameraStreamObj.getTracks().forEach(t => t.stop());
-                cameraStreamObj = null;
-            }
-            document.getElementById('camera-stream').srcObject = null;
-            document.getElementById('camera-modal').style.display = 'none';
-        }
-
-        async function capturePhoto() {
-            const videoElem = document.getElementById('camera-stream');
-            if (videoElem.videoWidth === 0 || videoElem.videoHeight === 0) {
-                alert('Camera is still warming up. Please wait 1 second and click Capture again.');
-                return;
-            }
-
-            const canvas = document.getElementById('camera-canvas');
-            canvas.width = videoElem.videoWidth;
-            canvas.height = videoElem.videoHeight;
-            const ctx = canvas.getContext('2d');
-            ctx.drawImage(videoElem, 0, 0, canvas.width, canvas.height);
-            
-            const dataURL = canvas.toDataURL('image/jpeg', 0.85);
-            const photoName = `camera_${Date.now()}.jpg`;
-            closeCameraModal();
-
-            await sendPayload({ 
-                sender: loggedInUser, 
-                receiver: selectedChat, 
-                message: '📸 Camera Photo', 
-                media_type: 'image', 
-                media_data: dataURL,
-                file_name: photoName
-            });
-        }
-
-        async function startVideoCall() {
-            const modal = document.getElementById('video-call-modal');
-            const localVideo = document.getElementById('local-video');
-            modal.style.display = 'flex';
-            try {
-                videoCallStreamObj = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
-                localVideo.srcObject = videoCallStreamObj;
-                localVideo.onloadedmetadata = () => localVideo.play();
-            } catch (err) { alert('Camera/Mic access denied.'); modal.style.display = 'none'; }
-        }
-        function endVideoCall() {
-            if (videoCallStreamObj) {
-                videoCallStreamObj.getTracks().forEach(t => t.stop());
-                videoCallStreamObj = null;
-            }
-            document.getElementById('video-call-modal').style.display = 'none';
-        }
-
-        function handleFileUpload(event) {
-            const file = event.target.files[0];
-            if (!file) return;
-            let type = 'file';
-            if (file.type.startsWith('image/')) type = 'image';
-            else if (file.type.startsWith('video/')) type = 'video';
-            else if (file.type.startsWith('audio/')) type = 'audio';
-
-            const reader = new FileReader();
-            reader.onload = async function(e) {
-                await sendPayload({ 
-                    sender: loggedInUser, 
-                    receiver: selectedChat, 
-                    message: type === 'file' ? `📄 Shared File` : '', 
-                    media_type: type, 
-                    media_data: e.target.result, 
-                    file_name: file.name 
-                });
-            };
-            reader.readAsDataURL(file);
-            event.target.value = '';
-        }
-
-        async function toggleVoiceRecording() {
-            const micBtn = document.getElementById('mic-btn');
-            if (!isRecording) {
-                try {
-                    const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-                    mediaRecorder = new MediaRecorder(stream);
-                    audioChunks = [];
-                    mediaRecorder.ondataavailable = e => audioChunks.push(e.data);
-                    mediaRecorder.onstop = () => {
-                        const blob = new Blob(audioChunks, { type: 'audio/webm' });
-                        const reader = new FileReader();
-                        reader.onload = async function(e) {
-                            await sendPayload({ 
-                                sender: loggedInUser, 
-                                receiver: selectedChat, 
-                                message: '🎤 Voice Note', 
-                                media_type: 'audio', 
-                                media_data: e.target.result,
-                                file_name: `voice_note_${Date.now()}.webm`
-                            });
-                        };
-                        reader.readAsDataURL(blob);
-                        stream.getTracks().forEach(t => t.stop());
-                    };
-                    mediaRecorder.start();
-                    isRecording = true;
-                    micBtn.classList.add('recording-active');
-                } catch (err) { alert('Microphone permission denied'); }
-            } else {
-                mediaRecorder.stop();
-                isRecording = false;
-                micBtn.classList.remove('recording-active');
-            }
-        }
-
-        async function sendPayload(payload) {
-            await fetch('/messages', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
-            lastMessageSnapshot = '';
-            loadMessages();
-        }
-
-        function openSettingsModal() { document.getElementById('settings-phone').value = loggedInPhone; document.getElementById('settings-modal').style.display = 'flex'; }
-        function closeSettingsModal() { document.getElementById('settings-modal').style.display = 'none'; }
-        function previewProfilePic(event) {
-            const file = event.target.files[0];
-            if (!file) return;
-            const reader = new FileReader();
-            reader.onload = e => tempNewPic = e.target.result;
-            reader.readAsDataURL(file);
-        }
-        async function saveProfileSettings() {
-            const phone = document.getElementById('settings-phone').value.trim();
-            const newPassword = document.getElementById('settings-new-password').value.trim();
-            const profile_pic = tempNewPic || loggedInPic;
-            const res = await fetch('/update-profile', {
-                method: 'POST', headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ username: loggedInUser, phone, profile_pic, newPassword })
-            });
-            if (res.ok) {
-                loggedInPhone = phone; loggedInPic = profile_pic;
-                localStorage.setItem('chat_phone', phone); localStorage.setItem('chat_pic', profile_pic);
-                document.getElementById('my-phone-display').innerText = phone ? '📞 ' + phone : '';
-                alert('Settings saved successfully!'); closeSettingsModal();
-            }
-        }
-        async function deleteAccount() {
-            if (confirm('Are you sure you want to delete your account?')) {
-                await fetch('/delete-account', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ username: loggedInUser }) });
-                logout();
-            }
-        }
-        function handleEnter(e) { if (e.key === 'Enter') sendTextMessage(); }
-        function logout() { localStorage.clear(); location.reload(); }
-    </script>
 </body>
 </html>
