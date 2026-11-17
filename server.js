@@ -17,6 +17,8 @@ const db = new sqlite3.Database('./mak_chat.db', (err) => {
     console.log('Mak Chat Database connected successfully!');
 });
 
+const otpStore = {}; 
+
 db.serialize(() => {
     db.run(`CREATE TABLE IF NOT EXISTS users (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -24,7 +26,8 @@ db.serialize(() => {
         password TEXT,
         phone TEXT,
         profile_pic TEXT,
-        role TEXT DEFAULT 'user'
+        role TEXT DEFAULT 'user',
+        is_verified INTEGER DEFAULT 0
     )`);
 
     db.run(`CREATE TABLE IF NOT EXISTS messages (
@@ -38,7 +41,6 @@ db.serialize(() => {
         timestamp DATETIME DEFAULT CURRENT_TIMESTAMP
     )`);
 
-    // Table for Likes on messages/posts
     db.run(`CREATE TABLE IF NOT EXISTS likes (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         message_id INTEGER,
@@ -46,7 +48,6 @@ db.serialize(() => {
         UNIQUE(message_id, username)
     )`);
 
-    // Table for Comments on messages/posts
     db.run(`CREATE TABLE IF NOT EXISTS comments (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         message_id INTEGER,
@@ -69,30 +70,68 @@ function verifyEmailDomain(email) {
     return allowedDomains.includes(match[1]) || match[1].endsWith('.edu') || match[1].endsWith('.gov');
 }
 
+// REGISTER ENDPOINT (Checks if email or phone number already exists)
 app.post('/register', async (req, res) => {
     const { username, password, phone } = req.body;
-    if (!username || !password) return res.status(400).json({ error: 'Please enter email and password' });
+    if (!username || !password || !phone) return res.status(400).json({ error: 'እባክዎ ኢሜይል፣ ፓስወርድ እና ስልክ ቁጥር ያስገቡ!' });
     if (!verifyEmailDomain(username)) return res.status(400).json({ error: 'Invalid email domain!' });
     if (password.length < 6) return res.status(400).json({ error: 'Password must be at least 6 characters!' });
 
-    db.get(`SELECT COUNT(*) as count FROM users`, async (err, row) => {
-        const role = (row && row.count === 0) ? 'admin' : 'user';
-        const hashedPassword = await bcrypt.hash(password, 10);
-        
-        db.run(`INSERT INTO users (username, password, phone, profile_pic, role) VALUES (?, ?, ?, ?, ?)`, 
-            [username.toLowerCase(), hashedPassword, phone || '', '', role], function(err) {
-            if (err) return res.status(400).json({ error: 'This email is already registered!' });
-            res.json({ message: 'Registration successful!' });
+    // Check if email already exists
+    db.get(`SELECT * FROM users WHERE username = ?`, [username.toLowerCase()], async (err, existingUser) => {
+        if (existingUser) return res.status(400).json({ error: 'ይህ ኢሜይል ቀደም ሲል ተመዝግቧል!' });
+
+        // Check if phone number already exists
+        db.get(`SELECT * FROM users WHERE phone = ?`, [phone], async (err, existingPhoneUser) => {
+            if (existingPhoneUser) return res.status(400).json({ error: 'ይህ ስልክ ቁጥር አስቀድሞ በሌላ አካውንት ተመዝግቧል!' });
+
+            db.get(`SELECT COUNT(*) as count FROM users`, async (err, row) => {
+                const role = (row && row.count === 0) ? 'admin' : 'user';
+                const hashedPassword = await bcrypt.hash(password, 10);
+                
+                const verificationCode = Math.floor(100000 + Math.random() * 900000).toString();
+                otpStore[username.toLowerCase()] = verificationCode;
+
+                db.run(`INSERT INTO users (username, password, phone, profile_pic, role, is_verified) VALUES (?, ?, ?, ?, ?, 0)`, 
+                    [username.toLowerCase(), hashedPassword, phone, '', role], function(err) {
+                    if (err) return res.status(400).json({ error: 'Registration failed!' });
+                    
+                    console.log(`[SMS Gateway Simulated] Send to ${phone}: የማረጋገጫ ኮድዎ ${verificationCode} ነው።`);
+                    res.json({ message: `የማረጋገጫ ኮድ ወደ ስልክ ቁጥርዎ (${phone}) ተልኳል። (Simulated OTP: ${verificationCode})` });
+                });
+            });
         });
     });
+});
+
+app.post('/verify-otp', (req, res) => {
+    const { username, otp } = req.body;
+    if (!username || !otp) return res.status(400).json({ error: 'Incomplete data' });
+
+    const cleanUsername = username.toLowerCase();
+    if (otpStore[cleanUsername] && otpStore[cleanUsername] === otp) {
+        db.run(`UPDATE users SET is_verified = 1 WHERE username = ?`, [cleanUsername], (err) => {
+            if (err) return res.status(500).json({ error: 'Database error' });
+            delete otpStore[cleanUsername];
+            res.json({ message: 'አካውንቱ በተሳካ ሁኔታ አፕሩቭ ሆኗል!' });
+        });
+    } else {
+        res.status(400).json({ error: 'ያስገቡት ኮድ ትክክል አይደለም!' });
+    }
 });
 
 app.post('/login', (req, res) => {
     const { username, password } = req.body;
     db.get(`SELECT * FROM users WHERE username = ?`, [username.toLowerCase()], async (err, user) => {
         if (err || !user) return res.status(400).json({ error: 'Incorrect email or password' });
+        
+        if (user.is_verified === 0) {
+            return res.status(403).json({ error: 'እባክዎ መጀመሪያ ስልክ ቁጥርዎን በኮድ ያረጋግጡ (Account not verified via SMS)!' });
+        }
+
         const isMatch = await bcrypt.compare(password, user.password);
         if (!isMatch) return res.status(400).json({ error: 'Incorrect email or password' });
+        
         res.json({ 
             message: 'Welcome!', 
             username: user.username, 
@@ -105,18 +144,29 @@ app.post('/login', (req, res) => {
 
 app.post('/update-profile', async (req, res) => {
     const { username, phone, profile_pic, newPassword } = req.body;
-    let sql, params;
-    if (newPassword) {
-        const hashedPassword = await bcrypt.hash(newPassword, 10);
-        sql = `UPDATE users SET phone = ?, profile_pic = ?, password = ? WHERE username = ?`;
-        params = [phone, profile_pic, hashedPassword, username];
-    } else {
-        sql = `UPDATE users SET phone = ?, profile_pic = ? WHERE username = ?`;
-        params = [phone, profile_pic, username];
-    }
-    db.run(sql, params, function(err) {
-        if (err) return res.status(500).json({ error: 'Failed to update profile' });
-        res.json({ message: 'Profile updated successfully!', phone, profile_pic });
+
+    // Check if updated phone is already used by another user
+    db.get(`SELECT * FROM users WHERE phone = ? AND username != ?`, [phone, username], (err, phoneRow) => {
+        if (phoneRow) return res.status(400).json({ error: 'ይህ ስልክ ቁጥር በሌላ ተጠቃሚ ተይዟል!' });
+
+        let sql, params;
+        if (newPassword) {
+            bcrypt.hash(newPassword, 10).then(hashedPassword => {
+                sql = `UPDATE users SET phone = ?, profile_pic = ?, password = ? WHERE username = ?`;
+                params = [phone, profile_pic, hashedPassword, username];
+                db.run(sql, params, function(err) {
+                    if (err) return res.status(500).json({ error: 'Failed to update profile' });
+                    res.json({ message: 'Profile updated successfully!', phone, profile_pic });
+                });
+            });
+        } else {
+            sql = `UPDATE users SET phone = ?, profile_pic = ? WHERE username = ?`;
+            params = [phone, profile_pic, username];
+            db.run(sql, params, function(err) {
+                if (err) return res.status(500).json({ error: 'Failed to update profile' });
+                res.json({ message: 'Profile updated successfully!', phone, profile_pic });
+            });
+        }
     });
 });
 
@@ -158,7 +208,6 @@ app.post('/delete-message', (req, res) => {
     });
 });
 
-// Toggle Like on a Message/Post
 app.post('/messages/like', (req, res) => {
     const { messageId, username } = req.body;
     if (!messageId || !username) return res.status(400).json({ error: 'Missing data' });
@@ -176,7 +225,6 @@ app.post('/messages/like', (req, res) => {
     });
 });
 
-// Add Comment to a Message/Post
 app.post('/messages/comment', (req, res) => {
     const { messageId, username, commentText } = req.body;
     if (!messageId || !username || !commentText) return res.status(400).json({ error: 'Missing data' });
@@ -188,7 +236,6 @@ app.post('/messages/comment', (req, res) => {
     });
 });
 
-// Delete Comment (Owner or Admin)
 app.post('/messages/delete-comment', (req, res) => {
     const { username, commentId } = req.body;
     db.get(`SELECT username FROM comments WHERE id = ?`, [commentId], (err, commentRow) => {
@@ -221,7 +268,7 @@ app.post('/delete-account', (req, res) => {
 
 app.get('/users', (req, res) => {
     const currentUser = req.query.currentUser;
-    db.all(`SELECT username, phone, profile_pic, role FROM users WHERE username != ? ORDER BY username ASC`, [currentUser], (err, rows) => {
+    db.all(`SELECT username, phone, profile_pic, role FROM users WHERE username != ? AND is_verified = 1 ORDER BY username ASC`, [currentUser], (err, rows) => {
         if (err) return res.status(500).json({ error: err.message });
         res.json(rows);
     });
@@ -241,7 +288,6 @@ app.post('/messages', (req, res) => {
     );
 });
 
-// Get Messages along with their Likes and Comments
 app.get('/messages', (req, res) => {
     const { user1, user2 } = req.query;
     let query, params;

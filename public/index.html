@@ -101,7 +101,6 @@
         .file-box { background: rgba(0,0,0,0.12); padding: 10px 12px; border-radius: 10px; display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-top: 6px; }
         .msg.received .file-box { background: rgba(102, 126, 234, 0.12); }
 
-        /* Message Action Bar (Like, Comment, Copy, Download, Forward) */
         .msg-actions { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 8px; padding-top: 6px; border-top: 1px solid rgba(128,128,128,0.2); }
         .msg-action-btn { background: rgba(0,0,0,0.18); color: inherit; border: none; padding: 4px 8px; border-radius: 6px; font-size: 11.5px; font-weight: 600; cursor: pointer; display: inline-flex; align-items: center; gap: 3px; transition: 0.15s; }
         .msg.received .msg-action-btn { background: rgba(102, 126, 234, 0.14); color: var(--text-main); }
@@ -111,7 +110,6 @@
         .msg-action-btn.dl-btn { background: #38a169; color: white !important; }
         .msg-action-btn.fwd-btn { background: #3182ce; color: white !important; }
 
-        /* Comments Section Inside Message Bubble */
         .comments-wrapper { margin-top: 8px; padding-top: 6px; border-top: 1px dashed rgba(128,128,128,0.3); font-size: 12.5px; }
         .comment-item { background: rgba(0,0,0,0.14); padding: 5px 9px; border-radius: 8px; margin-bottom: 4px; display: flex; justify-content: space-between; align-items: center; gap: 6px; }
         .msg.received .comment-item { background: rgba(0,0,0,0.05); }
@@ -136,8 +134,8 @@
         .chat-input input[type="text"] { flex: 1; border-radius: 25px; padding: 11px 16px; background: var(--chat-bg); color: var(--text-main); border: 1px solid var(--border-color); font-size: var(--font-size); }
         .send-btn { background: var(--primary-gradient); color: white; border: none; padding: 11px 20px; border-radius: 25px; font-weight: bold; cursor: pointer; }
 
-        #camera-modal, #video-call-modal, #settings-modal, #admin-modal, #forward-modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.7); justify-content: center; align-items: center; z-index: 2000; }
-        .camera-box, .video-box, .settings-content, .admin-content, .forward-content { background: var(--sidebar-bg); padding: 25px; border-radius: 15px; text-align: center; color: var(--text-main); max-width: 500px; width: 90%; max-height: 90vh; overflow-y: auto; box-shadow: 0 10px 30px rgba(0,0,0,0.3); }
+        #camera-modal, #video-call-modal, #settings-modal, #admin-modal, #forward-modal, #otp-modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.7); justify-content: center; align-items: center; z-index: 2000; }
+        .camera-box, .video-box, .settings-content, .admin-content, .forward-content, .otp-box { background: var(--sidebar-bg); padding: 25px; border-radius: 15px; text-align: center; color: var(--text-main); max-width: 500px; width: 90%; max-height: 90vh; overflow-y: auto; box-shadow: 0 10px 30px rgba(0,0,0,0.3); }
         .camera-box video, .video-box video { width: 100%; border-radius: 10px; background: black; max-height: 350px; object-fit: cover; }
         .camera-box canvas { display: none; }
         .modal-btn-row { display: flex; gap: 10px; justify-content: center; margin-top: 15px; }
@@ -181,12 +179,27 @@
             <input type="password" id="password" placeholder="At least 6 characters">
         </div>
         <div class="form-group" id="phone-group" style="display: none;">
-            <label>Phone Number (Optional)</label>
+            <label>Phone Number (Mandatory)</label>
             <input type="tel" id="phone" placeholder="+251911223344">
         </div>
         <button class="btn-primary" id="auth-btn" onclick="handleAuth()">Login</button>
         <div class="switch-text" id="switch-text">
             Don't have an account? <span onclick="toggleMode()">Register</span>
+        </div>
+    </div>
+
+    <!-- OTP Verification Modal -->
+    <div id="otp-modal">
+        <div class="otp-box">
+            <h3>📱 Verify Phone Number</h3>
+            <p style="font-size: 13px; color: var(--text-muted); margin-bottom: 15px;">የማረጋገጫ ኮድ (OTP) ወደ ስልክ ቁጥርዎ ተልኳል። እባክዎ ኮዱን እዚህ ያስገቡ፡</p>
+            <div class="form-group">
+                <input type="text" id="otp-input" placeholder="Enter 6-digit Code" style="text-align: center; font-size: 18px; letter-spacing: 2px;">
+            </div>
+            <div class="modal-btn-row">
+                <button class="btn-primary" onclick="verifyOtpCode()" style="background: #38a169;">Verify & Complete</button>
+                <button class="btn-primary" onclick="closeOtpModal()" style="background: #e53e3e;">Cancel</button>
+            </div>
         </div>
     </div>
 
@@ -346,8 +359,9 @@
         let messageInterval = null;
         let lastMessageSnapshot = '';
         let messageCache = {};
-        let openCommentBoxes = {}; // Tracks which message comment inputs are open
+        let openCommentBoxes = {}; 
         let messageToForward = null;
+        let pendingRegisterUsername = ''; // To track username during OTP verification
 
         let mediaRecorder = null;
         let audioChunks = [];
@@ -409,6 +423,11 @@
 
             if (!username || !password) { alert('Please fill in email and password!'); return; }
             if (!isRealEmail(username)) { alert('Please use a valid email address (e.g. @gmail.com)!'); return; }
+            
+            if (!isLoginMode && !phone) {
+                alert('ስልክ ቁጥር ማስገባት ግዴታ ነው (Phone number is mandatory)!');
+                return;
+            }
 
             const endpoint = isLoginMode ? '/login' : '/register';
             try {
@@ -430,11 +449,42 @@
                         localStorage.setItem('chat_role', loggedInRole);
                         showChatApp();
                     } else {
-                        alert(data.message);
-                        toggleMode();
+                        // Registration successful, now show OTP verification modal
+                        pendingRegisterUsername = username;
+                        document.getElementById('otp-modal').style.display = 'flex';
+                        alert(data.message); // Displays simulated SMS code info
                     }
                 } else { alert(data.error); }
             } catch (err) { alert('Failed to connect to server!'); }
+        }
+
+        async function verifyOtpCode() {
+            const otpCode = document.getElementById('otp-input').value.trim();
+            if (!otpCode) { alert('እባክዎ የተላከውን ኮድ ያስገቡ!'); return; }
+
+            try {
+                const response = await fetch('/verify-otp', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ username: pendingRegisterUsername, otp: otpCode })
+                });
+                const data = await response.json();
+                if (response.ok) {
+                    alert('ሪጅስትሬሽኑ በተሳካ ሁኔታ አፕሩቭ ሆኗል! (Registration Approved)');
+                    closeOtpModal();
+                    toggleMode(); // Switch back to login
+                } else {
+                    alert(data.error);
+                }
+            } catch (err) {
+                alert('ኮዱን ማረጋገጥ አልተቻለም!');
+            }
+        }
+
+        function closeOtpModal() {
+            document.getElementById('otp-modal').style.display = 'none';
+            document.getElementById('otp-input').value = '';
+            pendingRegisterUsername = '';
         }
 
         function showChatApp() {
@@ -518,7 +568,6 @@
             messageInterval = setInterval(loadMessages, 1500);
         }
 
-        // LIKE / UNLIKE MESSAGE
         async function toggleLike(msgId) {
             await fetch('/messages/like', {
                 method: 'POST',
@@ -529,14 +578,12 @@
             loadMessages();
         }
 
-        // TOGGLE COMMENT INPUT BOX
         function toggleCommentBox(msgId) {
             openCommentBoxes[msgId] = !openCommentBoxes[msgId];
             lastMessageSnapshot = '';
             loadMessages();
         }
 
-        // SUBMIT COMMENT
         async function submitComment(msgId) {
             const input = document.getElementById(`comment-input-${msgId}`);
             if (!input) return;
@@ -554,7 +601,6 @@
             loadMessages();
         }
 
-        // DELETE COMMENT
         async function deleteComment(commentId) {
             if (!confirm('Delete this comment?')) return;
             await fetch('/messages/delete-comment', {
@@ -566,7 +612,6 @@
             loadMessages();
         }
 
-        // COPY MESSAGE OR MEDIA
         async function copyMessageItem(msgId) {
             const msg = messageCache[msgId];
             if (!msg) return;
@@ -598,7 +643,6 @@
             }
         }
 
-        // DOWNLOAD MEDIA / FILE
         function downloadMediaFile(msgId) {
             const msg = messageCache[msgId];
             if (!msg || !msg.media_data) {
@@ -635,7 +679,6 @@
             }
         }
 
-        // FORWARD MESSAGE / MEDIA / FILE
         function openForwardModal(msgId) {
             const msg = messageCache[msgId];
             if (!msg) return;
@@ -685,7 +728,6 @@
 
         async function loadMessages() {
             if (!selectedChat) return;
-            // Pause refresh if user is actively typing inside a comment box
             if (document.activeElement && document.activeElement.id && document.activeElement.id.startsWith('comment-input-')) {
                 return;
             }
@@ -694,7 +736,6 @@
                 const response = await fetch(`/messages?user1=${encodeURIComponent(loggedInUser)}&user2=${encodeURIComponent(selectedChat)}`);
                 const messages = await response.json();
                 
-                // Snapshot includes message IDs, likes count, and comments count
                 const currentSnapshot = messages.map(m => `${m.id}:${(m.likes||[]).length}:${(m.comments||[]).length}:${openCommentBoxes[m.id]?1:0}`).join('|');
                 if (currentSnapshot === lastMessageSnapshot && messages.length > 0) return;
                 lastMessageSnapshot = currentSnapshot;
@@ -732,13 +773,11 @@
                     let canDelete = isMine || (loggedInRole === 'admin');
                     let deleteBtn = canDelete ? `<button class="delete-msg-btn" onclick="deleteMessage(${msg.id})" title="Delete Message">✕</button>` : '';
 
-                    // Like Button & Counter
                     const likesList = msg.likes || [];
                     const iLiked = likesList.includes(loggedInUser);
                     const likeCountText = likesList.length > 0 ? ` ${likesList.length}` : '';
                     const likeBtnTitle = likesList.length > 0 ? `Liked by: ${likesList.join(', ')}` : 'Like';
 
-                    // Comments Count
                     const commentsList = msg.comments || [];
                     const commentCountText = commentsList.length > 0 ? ` (${commentsList.length})` : '';
 
@@ -756,7 +795,6 @@
                         </div>
                     `;
 
-                    // Render Comments Section if there are comments or the user opened the comment input
                     let commentsHTML = '';
                     if (commentsList.length > 0 || openCommentBoxes[msg.id]) {
                         let itemsHTML = commentsList.map(c => {
