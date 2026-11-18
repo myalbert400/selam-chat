@@ -75,7 +75,7 @@ function verifyEmailDomain(email) {
     return allowedDomains.includes(match[1]) || match[1].endsWith('.edu') || match[1].endsWith('.gov');
 }
 
-// 1. REGISTER ENDPOINT
+// 1. REGISTER ENDPOINT (በተስተካከለ የ AfroMessage POST ጥያቄ)
 app.post('/register', async (req, res) => {
     const { username, password, phone } = req.body;
     if (!username || !password || !phone) return res.status(400).json({ error: 'እባክዎ ኢሜይል፣ ፓስወርድ እና ስልክ ቁጥር ያስገቡ!' });
@@ -96,14 +96,15 @@ app.post('/register', async (req, res) => {
                 otpStore[username.toLowerCase()] = verificationCode;
 
                 try {
-                    await axios.get('https://api.afromessage.com/api/send', {
-                        params: {
-                            from: AFROMESSAGE_SENDER_ID,
-                            to: phone,
-                            message: `የMak Chat ማረጋገጫ ኮድዎ (OTP): ${verificationCode}`
-                        },
+                    // አፍሮሜሴጅን በትክክለኛው የ POST ዘዴ መጥራት
+                    await axios.post('https://api.afromessage.com/api/send', {
+                        from: AFROMESSAGE_SENDER_ID,
+                        to: phone,
+                        message: `የMak Chat ማረጋገጫ ኮድዎ (OTP): ${verificationCode}`
+                    }, {
                         headers: {
-                            'Authorization': `Bearer ${AFROMESSAGE_TOKEN}`
+                            'Authorization': `Bearer ${AFROMESSAGE_TOKEN}`,
+                            'Content-Type': 'application/json'
                         }
                     });
 
@@ -162,16 +163,15 @@ app.post('/login', (req, res) => {
     });
 });
 
-// 4. UPDATE PROFILE (Setting - የስልክ ቁጥር መቀየርን ሙሉ በሙሉ የሚከለክል ሎጂክ)
+// 4. UPDATE PROFILE
 app.post('/update-profile', async (req, res) => {
-    const { username, profile_pic, newPassword } = req.body; // ስልክ ቁጥር ከዲዛይኑ ተወግዷል (እንዳይቀየር)
+    const { username, profile_pic, newPassword } = req.body;
     if (!username) return res.status(400).json({ error: 'Incomplete data' });
 
     const cleanUsername = username.toLowerCase();
 
     if (newPassword && newPassword.length > 0) {
         bcrypt.hash(newPassword, 10).then(hashedPassword => {
-            // ስልክ ቁጥሩ (phone) በ ዳታቤዝ ውስጥ እንዳለ ይጸናል፣ ፈጽሞ አይቀየርም
             const sql = `UPDATE users SET profile_pic = ?, password = ? WHERE username = ?`;
             db.run(sql, [profile_pic || '', hashedPassword, cleanUsername], function(err) {
                 if (err) return res.status(500).json({ error: 'Failed to update profile' });
@@ -187,116 +187,7 @@ app.post('/update-profile', async (req, res) => {
     }
 });
 
-// 5. ADMIN DELETE USER
-app.post('/admin/delete-user', (req, res) => {
-    const { adminUser, targetUser } = req.body;
-    db.get(`SELECT role FROM users WHERE username = ?`, [adminUser], (err, row) => {
-        if (!row || row.role !== 'admin') {
-            return res.status(403).json({ error: 'Unauthorized access! Admin only.' });
-        }
-        db.run(`DELETE FROM users WHERE username = ?`, [targetUser], () => {
-            db.run(`DELETE FROM messages WHERE sender = ? OR receiver = ?`, [targetUser, targetUser]);
-            db.run(`DELETE FROM likes WHERE username = ?`, [targetUser]);
-            db.run(`DELETE FROM comments WHERE username = ?`, [targetUser]);
-            res.json({ message: 'User deleted successfully by Admin' });
-        });
-    });
-});
-
-// 6. DELETE MESSAGE
-app.post('/delete-message', (req, res) => {
-    const { username, messageId } = req.body;
-    db.get(`SELECT sender FROM messages WHERE id = ?`, [messageId], (err, msgRow) => {
-        if (!msgRow) return res.status(404).json({ error: 'Message not found' });
-
-        db.get(`SELECT role FROM users WHERE username = ?`, [username], (err, userRow) => {
-            const isAdmin = userRow && userRow.role === 'admin';
-            const isOwner = msgRow.sender === username;
-
-            if (isAdmin || isOwner) {
-                db.run(`DELETE FROM messages WHERE id = ?`, [messageId], () => {
-                    db.run(`DELETE FROM likes WHERE message_id = ?`, [messageId]);
-                    db.run(`DELETE FROM comments WHERE message_id = ?`, [messageId]);
-                    res.json({ message: 'Message deleted successfully' });
-                });
-            } else {
-                res.status(403).json({ error: 'Unauthorized to delete this message' });
-            }
-        });
-    });
-});
-
-// 7. LIKES
-app.post('/messages/like', (req, res) => {
-    const { messageId, username } = req.body;
-    if (!messageId || !username) return res.status(400).json({ error: 'Missing data' });
-
-    db.get(`SELECT id FROM likes WHERE message_id = ? AND username = ?`, [messageId, username], (err, row) => {
-        if (row) {
-            db.run(`DELETE FROM likes WHERE id = ?`, [row.id], () => {
-                res.json({ liked: false });
-            });
-        } else {
-            db.run(`INSERT INTO likes (message_id, username) VALUES (?, ?)`, [messageId, username], () => {
-                res.json({ liked: true });
-            });
-        }
-    });
-});
-
-// 8. COMMENTS
-app.post('/messages/comment', (req, res) => {
-    const { messageId, username, commentText } = req.body;
-    if (!messageId || !username || !commentText) return res.status(400).json({ error: 'Missing data' });
-
-    db.run(`INSERT INTO comments (message_id, username, comment_text) VALUES (?, ?, ?)`, 
-        [messageId, username, commentText], function(err) {
-        if (err) return res.status(500).json({ error: err.message });
-        res.json({ id: this.lastID });
-    });
-});
-
-app.post('/messages/delete-comment', (req, res) => {
-    const { username, commentId } = req.body;
-    db.get(`SELECT username FROM comments WHERE id = ?`, [commentId], (err, commentRow) => {
-        if (!commentRow) return res.status(404).json({ error: 'Comment not found' });
-
-        db.get(`SELECT role FROM users WHERE username = ?`, [username], (err, userRow) => {
-            const isAdmin = userRow && userRow.role === 'admin';
-            const isOwner = commentRow.username === username;
-
-            if (isAdmin || isOwner) {
-                db.run(`DELETE FROM comments WHERE id = ?`, [commentId], () => {
-                    res.json({ message: 'Comment deleted' });
-                });
-            } else {
-                res.status(403).json({ error: 'Unauthorized' });
-            }
-        });
-    });
-});
-
-// 9. DELETE ACCOUNT
-app.post('/delete-account', (req, res) => {
-    const { username } = req.body;
-    db.run(`DELETE FROM users WHERE username = ?`, [username], () => {
-        db.run(`DELETE FROM messages WHERE sender = ? OR receiver = ?`, [username, username]);
-        db.run(`DELETE FROM likes WHERE username = ?`, [username]);
-        db.run(`DELETE FROM comments WHERE username = ?`, [username]);
-        res.json({ message: 'Account deleted' });
-    });
-});
-
-// 10. GET USERS
-app.get('/users', (req, res) => {
-    const currentUser = req.query.currentUser;
-    db.all(`SELECT username, phone, profile_pic, role FROM users WHERE username != ? AND is_verified = 1 ORDER BY username ASC`, [currentUser], (err, rows) => {
-        if (err) return res.status(500).json({ error: err.message });
-        res.json(rows);
-    });
-});
-
-// 11. MESSAGES HANDLING
+// 5. MESSAGES & OTHER ENDPOINTS
 app.post('/messages', (req, res) => {
     const { sender, receiver, message, media_type, media_data, file_name } = req.body;
     if (!sender || !receiver || (!message && !media_data)) return res.status(400).json({ error: 'Incomplete data' });
@@ -325,22 +216,7 @@ app.get('/messages', (req, res) => {
 
     db.all(query, params, (err, messages) => {
         if (err) return res.status(500).json({ error: err.message });
-        if (messages.length === 0) return res.json([]);
-
-        db.all(`SELECT * FROM likes`, [], (err, likes) => {
-            db.all(`SELECT * FROM comments ORDER BY timestamp ASC`, [], (err, comments) => {
-                const enriched = messages.map(msg => {
-                    const msgLikes = (likes || []).filter(l => l.message_id === msg.id).map(l => l.username);
-                    const msgComments = (comments || []).filter(c => c.message_id === msg.id);
-                    return {
-                        ...msg,
-                        likes: msgLikes,
-                        comments: msgComments
-                    };
-                });
-                res.json(enriched);
-            });
-        });
+        res.json(messages);
     });
 });
 
