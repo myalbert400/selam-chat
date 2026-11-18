@@ -3,7 +3,7 @@ const sqlite3 = require('sqlite3').verbose();
 const bcrypt = require('bcryptjs');
 const cors = require('cors');
 const path = require('path');
-const nodemailer = require('nodemailer'); // 1. Import nodemailer
+const nodemailer = require('nodemailer');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -13,7 +13,7 @@ app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ limit: '50mb', extended: true }));
 app.use(express.static(path.join(__dirname, 'public')));
 
-// 2. Configure Email Transporter (Nodemailer)
+// Configure Email Transporter (Nodemailer) with your App Password
 const transporter = nodemailer.createTransport({
     service: 'gmail',
     auth: {
@@ -28,6 +28,7 @@ const db = new sqlite3.Database('./mak_chat.db', (err) => {
 });
 
 const otpStore = {}; 
+const resetOtpStore = {}; 
 
 db.serialize(() => {
     db.run(`CREATE TABLE IF NOT EXISTS users (
@@ -98,7 +99,6 @@ app.post('/register', async (req, res) => {
             otpStore[username.toLowerCase()] = verificationCode;
 
             try {
-                // Send verification email
                 await transporter.sendMail({
                     from: 'myalbert400@gmail.com',
                     to: username,
@@ -160,7 +160,69 @@ app.post('/login', (req, res) => {
     });
 });
 
-// 4. MESSAGES ENDPOINTS
+// 4. FORGOT PASSWORD - REQUEST OTP
+app.post('/forgot-password', (req, res) => {
+    const { username } = req.body;
+    if (!username) return res.status(400).json({ error: 'Please enter your email!' });
+
+    db.get(`SELECT * FROM users WHERE username = ?`, [username.toLowerCase()], async (err, user) => {
+        if (err || !user) return res.status(404).json({ error: 'Email not found in our system!' });
+
+        const resetCode = Math.floor(100000 + Math.random() * 900000).toString();
+        resetOtpStore[username.toLowerCase()] = resetCode;
+
+        try {
+            await transporter.sendMail({
+                from: 'myalbert400@gmail.com',
+                to: username,
+                subject: 'Mak Chat - Password Reset Code',
+                text: `Your password reset verification code is: ${resetCode}`
+            });
+            res.json({ message: 'Password reset code sent to your email.' });
+        } catch (error) {
+            console.error('Email Error:', error);
+            res.status(500).json({ error: 'Failed to send reset email.' });
+        }
+    });
+});
+
+// 5. FORGOT PASSWORD - RESET PASSWORD
+app.post('/reset-password', async (req, res) => {
+    const { username, otp, newPassword } = req.body;
+    if (!username || !otp || !newPassword) return res.status(400).json({ error: 'Incomplete data!' });
+    if (newPassword.length < 6) return res.status(400).json({ error: 'Password must be at least 6 characters!' });
+
+    const cleanUsername = username.toLowerCase();
+    if (resetOtpStore[cleanUsername] && resetOtpStore[cleanUsername] === otp) {
+        const hashedPassword = await bcrypt.hash(newPassword, 10);
+        db.run(`UPDATE users SET password = ? WHERE username = ?`, [hashedPassword, cleanUsername], (err) => {
+            if (err) return res.status(500).json({ error: 'Database error' });
+            delete resetOtpStore[cleanUsername];
+            res.json({ message: 'Password reset successfully! You can now login.' });
+        });
+    } else {
+        res.status(400).json({ error: 'Invalid verification code!' });
+    }
+});
+
+// 6. UPDATE PROFILE ENDPOINT
+app.post('/update-profile', async (req, res) => {
+    const { username, newPassword } = req.body;
+    if (!username) return res.status(400).json({ error: 'Incomplete data' });
+
+    if (newPassword && newPassword.length > 0) {
+        if (newPassword.length < 6) return res.status(400).json({ error: 'Password must be at least 6 characters!' });
+        const hashedPassword = await bcrypt.hash(newPassword, 10);
+        db.run(`UPDATE users SET password = ? WHERE username = ?`, [hashedPassword, username.toLowerCase()], (err) => {
+            if (err) return res.status(500).json({ error: 'Database error' });
+            res.json({ message: 'Profile updated successfully!' });
+        });
+    } else {
+        res.json({ message: 'No changes made.' });
+    }
+});
+
+// 7. MESSAGES ENDPOINTS
 app.post('/messages', (req, res) => {
     const { sender, receiver, message } = req.body;
     if (!sender || !receiver || !message) return res.status(400).json({ error: 'Incomplete data' });

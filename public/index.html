@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="am">
+<html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -89,79 +89,100 @@
 <body>
 
 <div class="container">
-    <!-- 1. መግቢያ (LOGIN) -->
+    <!-- 1. LOGIN SECTION -->
     <div id="loginSection">
-        <h2>Mak Chat - ግባ</h2>
-        <input type="email" id="loginEmail" placeholder="ኢሜይል (ለምሳሌ፡ user@gmail.com)" required>
-        <input type="password" id="loginPassword" placeholder="ፓስወርድ" required>
-        <button onclick="login()">ግባ (Login)</button>
-        <div class="link" onclick="showSection('registerSection')">አካውንት የለዎትም? ይመዝገቡ</div>
+        <h2>Mak Chat - Login</h2>
+        <input type="email" id="loginEmail" placeholder="Email (e.g., user@gmail.com)" required>
+        <input type="password" id="loginPassword" placeholder="Password" required>
+        <button onclick="login()">Login</button>
+        <div class="link" onclick="showSection('registerSection')">Don't have an account? Register</div>
+        <div class="link" onclick="showSection('forgotSection')" style="color: #dc3545; margin-top: 5px;">Forgot Password?</div>
     </div>
 
-    <!-- 2. መመዝገቢያ (REGISTER) -->
+    <!-- 2. REGISTER SECTION -->
     <div id="registerSection" class="hidden">
-        <h2>አዲስ አካውንት ይፍጠሩ</h2>
-        <input type="email" id="regEmail" placeholder="ኢሜይል (gmail.com, yahoo.com...)" required>
-        <input type="tel" id="regPhone" placeholder="ስልክ ቁጥር (ለምሳሌ፡ +251911223344)" required>
-        <input type="password" id="regPassword" placeholder="ፓስወርድ (ቢያንስ 6 ፊደል)" required>
-        <button class="secondary-btn" onclick="register()">ተመዝገብ (Register)</button>
-        <div class="link" onclick="showSection('loginSection')">አካውንት አለዎት? ይግቡ</div>
+        <h2>Create an Account</h2>
+        <input type="email" id="regEmail" placeholder="Email (gmail.com, yahoo.com...)" required>
+        <input type="tel" id="regPhone" placeholder="Phone Number (e.g., +251911223344)" required>
+        <input type="password" id="regPassword" placeholder="Password (at least 6 characters)" required>
+        <button class="secondary-btn" onclick="register()">Register</button>
+        <div class="link" onclick="showSection('loginSection')">Already have an account? Login</div>
     </div>
 
-    <!-- 3. የኦቲፒ ማረጋገጫ (OTP VERIFICATION) -->
+    <!-- 3. OTP VERIFICATION SECTION -->
     <div id="otpSection" class="hidden">
-        <h2>ስልክ ቁጥርዎን ያረጋግጡ</h2>
-        <p style="font-size: 13px; color: #555; text-align: center;">በኤስኤምኤስ የተላከልዎትን ባለ 6 አሃዝ ኮድ ያስገቡ።</p>
-        <input type="text" id="otpCode" placeholder="የ6 አሃዝ OTP ኮድ" maxlength="6">
-        <button onclick="verifyOtp()">አረጋግጥ (Verify)</button>
+        <h2>Verify Your Email</h2>
+        <p style="font-size: 13px; color: #555; text-align: center;">Please enter the 6-digit verification code sent to your email.</p>
+        <input type="text" id="otpCode" placeholder="6-digit OTP Code" maxlength="6">
+        <button onclick="verifyOtp()">Verify</button>
     </div>
 
-    <!-- 4. ዋናው የቻት ገጽ (CHAT ROOM) -->
+    <!-- 4. FORGOT PASSWORD SECTION -->
+    <div id="forgotSection" class="hidden">
+        <h2>Reset Password</h2>
+        <p style="font-size: 13px; color: #555; text-align: center;">Enter your registered email to receive a reset code.</p>
+        <input type="email" id="forgotEmail" placeholder="Enter your email" required>
+        <button class="secondary-btn" onclick="requestPasswordReset()">Send Reset Code</button>
+        <div class="link" onclick="showSection('loginSection')">Back to Login</div>
+    </div>
+
+    <!-- 5. NEW PASSWORD SECTION -->
+    <div id="resetSection" class="hidden">
+        <h2>New Password</h2>
+        <p style="font-size: 13px; color: #555; text-align: center;">Enter the verification code sent to your email and your new password.</p>
+        <input type="text" id="resetOtp" placeholder="6-digit Reset Code" maxlength="6">
+        <input type="password" id="newResetPassword" placeholder="New Password (at least 6 characters)" required>
+        <button class="secondary-btn" onclick="resetPassword()">Reset Password</button>
+        <div class="link" onclick="showSection('loginSection')">Back to Login</div>
+    </div>
+
+    <!-- 6. CHAT ROOM SECTION -->
     <div id="chatSection" class="hidden">
         <div class="top-bar">
             <strong id="welcomeUser">Mak Chat</strong>
             <div>
-                <button onclick="openSettings()">ሴቲንግ (Settings)</button>
-                <button class="danger-btn" onclick="logout()">ውጣ</button>
+                <button onclick="openSettings()">Settings</button>
+                <button class="danger-btn" onclick="logout()">Logout</button>
             </div>
         </div>
         <div id="chatBox"></div>
         <div style="display: flex; gap: 5px;">
-            <input type="text" id="messageInput" placeholder="መልዕክት ይጻፉ..." onkeypress="if(event.key==='Enter') sendMessage()">
-            <button style="width: 80px;" onclick="sendMessage()">ላክ</button>
+            <input type="text" id="messageInput" placeholder="Type a message..." onkeypress="if(event.key==='Enter') sendMessage()">
+            <button style="width: 80px;" onclick="sendMessage()">Send</button>
         </div>
     </div>
 
-    <!-- 5. ሴቲንግ (SETTINGS - ስልክ ቁጥር መቀየር አይቻልም) -->
+    <!-- 7. SETTINGS SECTION -->
     <div id="settingsSection" class="hidden">
-        <h3>ፕሮፋይል ሴቲንግ</h3>
-        <label style="font-size: 12px; color: #666;">ኢሜይል (መቀየር አይቻልም):</label>
+        <h3>Profile Settings</h3>
+        <label style="font-size: 12px; color: #666;">Email (Cannot be changed):</label>
         <input type="text" id="setEmail" disabled>
 
-        <label style="font-size: 12px; color: #666;">ስልክ ቁጥር (ቋሚ - መቀየር አይቻልም):</label>
+        <label style="font-size: 12px; color: #666;">Phone Number (Fixed):</label>
         <input type="text" id="setPhone" disabled>
 
-        <label style="font-size: 12px; color: #666;">አዲስ ፓስወርድ (መቀየር ከፈለጉ ብቻ ይሙሉ):</label>
-        <input type="password" id="setNewPassword" placeholder="አዲስ ፓስወርድ">
+        <label style="font-size: 12px; color: #666;">New Password (Leave blank if unchanged):</label>
+        <input type="password" id="setNewPassword" placeholder="New Password">
 
-        <button class="secondary-btn" onclick="updateProfile()">ለውጦችን አስቀምጥ (Save)</button>
-        <button onclick="showSection('chatSection')" style="background: #6c757d;">ወደ ቻት ተመለስ</button>
+        <button class="secondary-btn" onclick="updateProfile()">Save Changes</button>
+        <button onclick="showSection('chatSection')" style="background: #6c757d;">Back to Chat</button>
     </div>
 </div>
 
 <script>
     let currentUser = null;
     let pendingEmail = '';
+    let resetEmail = '';
     let chatInterval = null;
 
     function showSection(sectionId) {
-        ['loginSection', 'registerSection', 'otpSection', 'chatSection', 'settingsSection'].forEach(id => {
+        ['loginSection', 'registerSection', 'otpSection', 'forgotSection', 'resetSection', 'chatSection', 'settingsSection'].forEach(id => {
             document.getElementById(id).classList.add('hidden');
         });
         document.getElementById(sectionId).classList.remove('hidden');
     }
 
-    // 1. መመዝገብ (Register)
+    // 1. Register
     async function register() {
         const username = document.getElementById('regEmail').value.trim();
         const phone = document.getElementById('regPhone').value.trim();
@@ -183,7 +204,7 @@
         }
     }
 
-    // 2. OTP ማረጋገጥ
+    // 2. Verify OTP
     async function verifyOtp() {
         const otp = document.getElementById('otpCode').value.trim();
 
@@ -202,7 +223,7 @@
         }
     }
 
-    // 3. መግባት (Login)
+    // 3. Login
     async function login() {
         const username = document.getElementById('loginEmail').value.trim();
         const password = document.getElementById('loginPassword').value;
@@ -219,13 +240,57 @@
             document.getElementById('welcomeUser').innerText = data.username.split('@')[0];
             showSection('chatSection');
             loadMessages();
-            chatInterval = setInterval(loadMessages, 3000); // በየ 3 ሰከንዱ አዲስ መልዕክት ያመጣል
+            chatInterval = setInterval(loadMessages, 3000);
         } else {
             alert(data.error);
         }
     }
 
-    // 4. መልዕክት መላክ እና ማምጣት (Public Room)
+    // 4. Forgot Password - Request Reset Code
+    async function requestPasswordReset() {
+        const username = document.getElementById('forgotEmail').value.trim();
+        if (!username) {
+            alert('Please enter your email!');
+            return;
+        }
+
+        const res = await fetch('/forgot-password', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ username })
+        });
+        const data = await res.json();
+
+        if (res.ok) {
+            alert(data.message);
+            resetEmail = username;
+            showSection('resetSection');
+        } else {
+            alert(data.error);
+        }
+    }
+
+    // 5. Reset Password - Submit New Password with OTP
+    async function resetPassword() {
+        const otp = document.getElementById('resetOtp').value.trim();
+        const newPassword = document.getElementById('newResetPassword').value;
+
+        const res = await fetch('/reset-password', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ username: resetEmail, otp, newPassword })
+        });
+        const data = await res.json();
+
+        if (res.ok) {
+            alert(data.message);
+            showSection('loginSection');
+        } else {
+            alert(data.error);
+        }
+    }
+
+    // 6. Send & Load Messages
     async function sendMessage() {
         const input = document.getElementById('messageInput');
         const message = input.value.trim();
@@ -246,7 +311,7 @@
 
     async function loadMessages() {
         if (!currentUser) return;
-        const res = await fetch(`/messages?user1=${currentUser.username}&user2=PUBLIC_ROOM`);
+        const res = await fetch(`/messages`);
         const messages = await res.json();
         const chatBox = document.getElementById('chatBox');
         
@@ -260,10 +325,10 @@
         chatBox.scrollTop = chatBox.scrollHeight;
     }
 
-    // 5. ሴቲንግ (Settings)
+    // 7. Settings & Profile Update
     function openSettings() {
         document.getElementById('setEmail').value = currentUser.username;
-        document.getElementById('setPhone').value = currentUser.phone; // ቋሚ ሆኖ ይታያል (Disabled)
+        document.getElementById('setPhone').value = currentUser.phone;
         document.getElementById('setNewPassword').value = '';
         showSection('settingsSection');
     }
@@ -276,14 +341,13 @@
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
                 username: currentUser.username,
-                profile_pic: currentUser.profile_pic || '',
                 newPassword: newPassword
             })
         });
         const data = await res.json();
 
         if (res.ok) {
-            alert('መረጃዎ በተሳካ ሁኔታ ተዘምኗል!');
+            alert('Profile updated successfully!');
             showSection('chatSection');
         } else {
             alert(data.error);
