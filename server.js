@@ -3,7 +3,7 @@ const sqlite3 = require('sqlite3').verbose();
 const bcrypt = require('bcryptjs');
 const cors = require('cors');
 const path = require('path');
-const nodemailer = require('nodemailer');
+const { Resend } = require('resend');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -13,22 +13,21 @@ app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ limit: '50mb', extended: true }));
 app.use(express.static(path.join(__dirname, 'public')));
 
-// Configure Email Transporter (Nodemailer) with your App Password
-const transporter = nodemailer.createTransport({
-    service: 'gmail',
-    auth: {
-        user: 'myalbert400@gmail.com',       
-        pass: 'ohlm botv avpr tmft'          
-    }
-});
+// Environment Variable ካለ እሱን ይጠቀማል፣ ከሌለ የእርስዎን API Key ይጠቀማል
+const RESEND_API_KEY = process.env.RESEND_API_KEY || 'rnd_T1jao9K5T9DvPy2JGRhFrtqiwm1Q';
+const resend = new Resend(RESEND_API_KEY);
+
+// የራስዎ የተረጋገጠ ዶሜይን ካለ በ FROM_EMAIL ያስገቡ (ለምሳሌ: 'Mak Chat <noreply@yourdomain.com>')
+// ዶሜይን ገና ካላረጋገጡ 'onboarding@resend.dev' ይጠቀሙ
+const FROM_EMAIL = process.env.FROM_EMAIL || 'onboarding@resend.dev';
 
 const db = new sqlite3.Database('./mak_chat.db', (err) => {
-    if (err) console.error(err.message);
-    console.log('Mak Chat Database connected successfully!');
+    if (err) console.error('Database connection error:', err.message);
+    else console.log('Mak Chat Database connected successfully!');
 });
 
-const otpStore = {}; 
-const resetOtpStore = {}; 
+const otpStore = {};
+const resetOtpStore = {};
 
 db.serialize(() => {
     db.run(`CREATE TABLE IF NOT EXISTS users (
@@ -68,53 +67,79 @@ db.serialize(() => {
     )`);
 });
 
-const allowedDomains = [
-    'gmail.com', 'yahoo.com', 'outlook.com', 'hotmail.com', 
-    'icloud.com', 'live.com', 'aol.com', 'protonmail.com', 
-    'yandex.com', 'zoho.com', 'edu.et', 'gov.et'
-];
-
-function verifyEmailDomain(email) {
-    const emailRegex = /^[a-zA-Z0-9._%+-]+@([a-zA-Z0-9.-]+\.[a-zA-Z]{2,})$/;
-    const match = email.toLowerCase().match(emailRegex);
-    if (!match) return false;
-    return allowedDomains.includes(match[1]) || match[1].endsWith('.edu') || match[1].endsWith('.gov');
+function isValidEmailFormat(email) {
+    if (!email || typeof email !== 'string') return false;
+    return /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(email.trim());
 }
 
-// 1. REGISTER ENDPOINT (Sends OTP via email)
-app.post('/register', async (req, res) => {
-    const { username, password, phone } = req.body;
-    if (!username || !password || !phone) return res.status(400).json({ error: 'Please enter email, password, and phone number!' });
-    if (!verifyEmailDomain(username)) return res.status(400).json({ error: 'Invalid email domain!' });
-    if (password.length < 6) return res.status(400).json({ error: 'Password must be at least 6 characters!' });
+async function sendOtpEmail(toEmail, subject, code) {
+    const { data, error } = await resend.emails.send({
+        from: FROM_EMAIL,
+        to: [toEmail],
+        subject: subject,
+        text: `Your Mak Chat verification code is: ${code}`
+    });
 
-    db.get(`SELECT * FROM users WHERE username = ?`, [username.toLowerCase()], async (err, existingUser) => {
+    if (error) {
+        throw new Error(error.message || 'Resend API error');
+    }
+    return data;
+}
+
+app.get('/health', (req, res) => {
+    res.status(200).json({ status: 'ok' });
+});
+
+// 1. REGISTER ENDPOINT
+app.post('/register', (req, res) => {
+    const username = (req.body.username || '').trim().toLowerCase();
+    const phone = (req.body.phone || '').trim();
+    const password = req.body.password || '';
+
+    if (!username || !password || !phone) {
+        return res.status(400).json({ error: 'Please enter email, password, and phone number!' });
+    }
+    if (!isValidEmailFormat(username)) {
+        return res.status(400).json({ error: 'Please enter a valid email address!' });
+    }
+    if (password.length < 6) {
+        return res.status(400).json({ error: 'Password must be at least 6 characters!' });
+    }
+
+    db.get(`SELECT id FROM users WHERE username = ?`, [username], (err, existingUser) => {
+        if (err) return res.status(500).json({ error: 'Database error!' });
         if (existingUser) return res.status(400).json({ error: 'This email is already registered!' });
 
-        db.get(`SELECT COUNT(*) as count FROM users`, async (err, row) => {
-            const role = (row && row.count === 0) ? 'admin' : 'user';
-            const hashedPassword = await bcrypt.hash(password, 10);
-            
-            const verificationCode = Math.floor(100000 + Math.random() * 900000).toString();
-            otpStore[username.toLowerCase()] = verificationCode;
+        db.get(`SELECT COUNT(*) as count FROM users`, async (countErr, row) => {
+            if (countErr) return res.status(500).json({ error: 'Database error!' });
 
             try {
-                await transporter.sendMail({
-                    from: 'myalbert400@gmail.com',
-                    to: username,
-                    subject: 'Mak Chat - Verification Code (OTP)',
-                    text: `Your Mak Chat verification code (OTP) is: ${verificationCode}`
-                });
+                const role = (row && row.count === 0) ? 'admin' : 'user';
+                const hashedPassword = await bcrypt.hash(password, 8);
+                const verificationCode = Math.floor(100000 + Math.random() * 900000).toString();
 
-                db.run(`INSERT INTO users (username, password, phone, profile_pic, role, is_verified) VALUES (?, ?, ?, ?, ?, 0)`, 
-                    [username.toLowerCase(), hashedPassword, phone, '', role], function(err) {
-                    if (err) return res.status(400).json({ error: 'Registration failed!' });
-                    res.json({ message: `Verification code sent to email (${username}).` });
-                });
+                await sendOtpEmail(
+                    username,
+                    'Mak Chat - Verification Code (OTP)',
+                    verificationCode
+                );
 
+                otpStore[username] = {
+                    code: verificationCode,
+                    expiresAt: Date.now() + 10 * 60 * 1000
+                };
+
+                db.run(
+                    `INSERT INTO users (username, password, phone, profile_pic, role, is_verified) VALUES (?, ?, ?, ?, ?, 0)`,
+                    [username, hashedPassword, phone, '', role],
+                    function (insertErr) {
+                        if (insertErr) return res.status(400).json({ error: 'Registration failed!' });
+                        return res.json({ message: `Verification code sent to email (${username}).` });
+                    }
+                );
             } catch (emailError) {
-                console.error('Email Error:', emailError);
-                res.status(500).json({ error: 'Failed to send email. Please enter a valid email address!' });
+                console.error('Resend Error:', emailError.message);
+                return res.status(500).json({ error: `Failed to send email: ${emailError.message}` });
             }
         });
     });
@@ -122,125 +147,145 @@ app.post('/register', async (req, res) => {
 
 // 2. VERIFY OTP ENDPOINT
 app.post('/verify-otp', (req, res) => {
-    const { username, otp } = req.body;
-    if (!username || !otp) return res.status(400).json({ error: 'Incomplete data' });
+    const cleanUsername = (req.body.username || '').trim().toLowerCase();
+    const otp = (req.body.otp || '').trim();
 
-    const cleanUsername = username.toLowerCase();
-    if (otpStore[cleanUsername] && otpStore[cleanUsername] === otp) {
+    if (!cleanUsername || !otp) {
+        return res.status(400).json({ error: 'Incomplete data' });
+    }
+
+    const record = otpStore[cleanUsername];
+    if (record && Date.now() <= record.expiresAt && record.code === otp) {
         db.run(`UPDATE users SET is_verified = 1 WHERE username = ?`, [cleanUsername], (err) => {
             if (err) return res.status(500).json({ error: 'Database error' });
             delete otpStore[cleanUsername];
-            res.json({ message: 'Account approved successfully!' });
+            return res.json({ message: 'Account approved successfully!' });
         });
     } else {
-        res.status(400).json({ error: 'The verification code you entered is incorrect!' });
+        return res.status(400).json({ error: 'The verification code you entered is incorrect or expired!' });
     }
 });
 
 // 3. LOGIN ENDPOINT
 app.post('/login', (req, res) => {
-    const { username, password } = req.body;
-    db.get(`SELECT * FROM users WHERE username = ?`, [username.toLowerCase()], async (err, user) => {
+    const cleanUsername = (req.body.username || '').trim().toLowerCase();
+    const password = req.body.password || '';
+
+    db.get(`SELECT * FROM users WHERE username = ?`, [cleanUsername], async (err, user) => {
         if (err || !user) return res.status(400).json({ error: 'Incorrect email or password' });
-        
+
         if (user.is_verified === 0) {
             return res.status(403).json({ error: 'Please verify your email with the OTP code first (Account not verified)!' });
         }
 
         const isMatch = await bcrypt.compare(password, user.password);
         if (!isMatch) return res.status(400).json({ error: 'Incorrect email or password' });
-        
-        res.json({ 
-            message: 'Welcome!', 
-            username: user.username, 
-            phone: user.phone, 
+
+        return res.json({
+            message: 'Welcome!',
+            username: user.username,
+            phone: user.phone,
             profile_pic: user.profile_pic,
-            role: user.role 
+            role: user.role
         });
     });
 });
 
 // 4. FORGOT PASSWORD - REQUEST OTP
 app.post('/forgot-password', (req, res) => {
-    const { username } = req.body;
-    if (!username) return res.status(400).json({ error: 'Please enter your email!' });
+    const cleanUsername = (req.body.username || '').trim().toLowerCase();
+    if (!cleanUsername) return res.status(400).json({ error: 'Please enter your email!' });
 
-    db.get(`SELECT * FROM users WHERE username = ?`, [username.toLowerCase()], async (err, user) => {
+    db.get(`SELECT id FROM users WHERE username = ?`, [cleanUsername], async (err, user) => {
         if (err || !user) return res.status(404).json({ error: 'Email not found in our system!' });
 
         const resetCode = Math.floor(100000 + Math.random() * 900000).toString();
-        resetOtpStore[username.toLowerCase()] = resetCode;
 
         try {
-            await transporter.sendMail({
-                from: 'myalbert400@gmail.com',
-                to: username,
-                subject: 'Mak Chat - Password Reset Code',
-                text: `Your password reset verification code is: ${resetCode}`
-            });
-            res.json({ message: 'Password reset code sent to your email.' });
+            await sendOtpEmail(
+                cleanUsername,
+                'Mak Chat - Password Reset Code',
+                resetCode
+            );
+
+            resetOtpStore[cleanUsername] = {
+                code: resetCode,
+                expiresAt: Date.now() + 10 * 60 * 1000
+            };
+
+            return res.json({ message: 'Password reset code sent to your email.' });
         } catch (error) {
-            console.error('Email Error:', error);
-            res.status(500).json({ error: 'Failed to send reset email.' });
+            console.error('Resend Error:', error.message);
+            return res.status(500).json({ error: `Failed to send reset email: ${error.message}` });
         }
     });
 });
 
 // 5. FORGOT PASSWORD - RESET PASSWORD
 app.post('/reset-password', async (req, res) => {
-    const { username, otp, newPassword } = req.body;
-    if (!username || !otp || !newPassword) return res.status(400).json({ error: 'Incomplete data!' });
+    const cleanUsername = (req.body.username || '').trim().toLowerCase();
+    const otp = (req.body.otp || '').trim();
+    const newPassword = req.body.newPassword || '';
+
+    if (!cleanUsername || !otp || !newPassword) return res.status(400).json({ error: 'Incomplete data!' });
     if (newPassword.length < 6) return res.status(400).json({ error: 'Password must be at least 6 characters!' });
 
-    const cleanUsername = username.toLowerCase();
-    if (resetOtpStore[cleanUsername] && resetOtpStore[cleanUsername] === otp) {
-        const hashedPassword = await bcrypt.hash(newPassword, 10);
+    const record = resetOtpStore[cleanUsername];
+    if (record && Date.now() <= record.expiresAt && record.code === otp) {
+        const hashedPassword = await bcrypt.hash(newPassword, 8);
         db.run(`UPDATE users SET password = ? WHERE username = ?`, [hashedPassword, cleanUsername], (err) => {
             if (err) return res.status(500).json({ error: 'Database error' });
             delete resetOtpStore[cleanUsername];
-            res.json({ message: 'Password reset successfully! You can now login.' });
+            return res.json({ message: 'Password reset successfully! You can now login.' });
         });
     } else {
-        res.status(400).json({ error: 'Invalid verification code!' });
+        return res.status(400).json({ error: 'Invalid or expired verification code!' });
     }
 });
 
 // 6. UPDATE PROFILE ENDPOINT
 app.post('/update-profile', async (req, res) => {
-    const { username, newPassword } = req.body;
-    if (!username) return res.status(400).json({ error: 'Incomplete data' });
+    const cleanUsername = (req.body.username || '').trim().toLowerCase();
+    const newPassword = req.body.newPassword || '';
+
+    if (!cleanUsername) return res.status(400).json({ error: 'Incomplete data' });
 
     if (newPassword && newPassword.length > 0) {
         if (newPassword.length < 6) return res.status(400).json({ error: 'Password must be at least 6 characters!' });
-        const hashedPassword = await bcrypt.hash(newPassword, 10);
-        db.run(`UPDATE users SET password = ? WHERE username = ?`, [hashedPassword, username.toLowerCase()], (err) => {
+        const hashedPassword = await bcrypt.hash(newPassword, 8);
+        db.run(`UPDATE users SET password = ? WHERE username = ?`, [hashedPassword, cleanUsername], (err) => {
             if (err) return res.status(500).json({ error: 'Database error' });
-            res.json({ message: 'Profile updated successfully!' });
+            return res.json({ message: 'Profile updated successfully!' });
         });
     } else {
-        res.json({ message: 'No changes made.' });
+        return res.json({ message: 'No changes made.' });
     }
 });
 
 // 7. MESSAGES ENDPOINTS
 app.post('/messages', (req, res) => {
-    const { sender, receiver, message } = req.body;
-    if (!sender || !receiver || !message) return res.status(400).json({ error: 'Incomplete data' });
-    
+    const sender = (req.body.sender || '').trim().toLowerCase();
+    const receiver = (req.body.receiver || 'PUBLIC_ROOM').trim();
+    const message = (req.body.message || '').trim();
+
+    if (!sender || !receiver || !message) {
+        return res.status(400).json({ error: 'Incomplete data' });
+    }
+
     db.run(
         `INSERT INTO messages (sender, receiver, message) VALUES (?, ?, ?)`,
         [sender, receiver, message],
-        function(err) {
+        function (err) {
             if (err) return res.status(500).json({ error: err.message });
-            res.json({ id: this.lastID });
+            return res.json({ id: this.lastID });
         }
     );
 });
 
 app.get('/messages', (req, res) => {
-    db.all(`SELECT * FROM messages WHERE receiver = 'PUBLIC_ROOM' ORDER BY timestamp ASC`, [], (err, messages) => {
+    db.all(`SELECT id, sender, receiver, message, timestamp FROM messages WHERE receiver = 'PUBLIC_ROOM' ORDER BY id ASC LIMIT 100`, [], (err, messages) => {
         if (err) return res.status(500).json({ error: err.message });
-        res.json(messages);
+        return res.json(messages);
     });
 });
 
