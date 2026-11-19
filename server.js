@@ -13,8 +13,8 @@ app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ limit: '50mb', extended: true }));
 app.use(express.static(path.join(__dirname, 'public')));
 
-// Environment Variable ካለ እሱን ይጠቀማል፣ ከሌለ የእርስዎን API Key ይጠቀማል
-const RESEND_API_KEY = process.env.RESEND_API_KEY || 'rnd_T1jao9K5T9DvPy2JGRhFrtqiwm1Q';
+// በ Hosting Environment Variables ውስጥ RESEND_API_KEY ካለ እሱን ይጠቀማል፣ ከሌለ የእርስዎን API Key ይጠቀማል
+const RESEND_API_KEY = process.env.RESEND_API_KEY || 'rnd_9yoEoKu1AuPlAnW4jmfgOPkbltKx';
 const resend = new Resend(RESEND_API_KEY);
 
 // የራስዎ የተረጋገጠ ዶሜይን ካለ በ FROM_EMAIL ያስገቡ (ለምሳሌ: 'Mak Chat <noreply@yourdomain.com>')
